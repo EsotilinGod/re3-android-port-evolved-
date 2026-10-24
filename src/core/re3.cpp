@@ -542,6 +542,10 @@ char gsFirstPersonKey[8] = "V";
 // [Camera] FirstPersonBody: 1 = se ven brazos, arma y cuerpo del personaje.
 bool gbFirstPersonBody = true;
 
+// [Weapons] ManualReload / ReloadKey: recargar con una tecla (por defecto R).
+bool gbManualReload = true;
+char gsReloadKey[8] = "R";
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -665,6 +669,8 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
+	ReadIniIfExists("Weapons", "ManualReload", &gbManualReload);
+	ReadIniIfExists("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
 
 	return true;
 }
@@ -772,6 +778,8 @@ void SaveINISettings()
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
+	StoreIni("Weapons", "ManualReload", (uint8)gbManualReload);
+	StoreIni("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
 
 	GetIniFile().write(cfg);
 }

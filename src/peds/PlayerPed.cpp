@@ -1484,6 +1484,41 @@ CPlayerPed::ProcessControl(void)
 		}
 	}
 
+	// [Weapons] ManualReload: tecla (por defecto R) para recargar sin vaciar el
+	// cargador. Usa el mismo estado de recarga del juego, asi que el tiempo,
+	// el sonido y la animacion son los originales. No se pierde municion: en
+	// GTA III el total incluye lo que hay en el cargador.
+	{
+		extern bool gbManualReload;
+		extern char gsReloadKey[8];
+		if (gbManualReload && padUsed && !padUsed->ArePlayerControlsDisabled() && !bInVehicle &&
+		    m_nPedState != PED_SNIPER_MODE && IsPedInControl()) {
+			int key = gsReloadKey[0];
+			if (key >= 'a' && key <= 'z')
+				key -= 'a' - 'A';
+			CWeapon *weapon = GetWeapon();
+			CWeaponInfo *info = CWeaponInfo::GetWeaponInfo(weapon->m_eWeaponType);
+			int32 fullClip = Min(info->m_nAmountofAmmunition, weapon->m_nAmmoTotal);
+			if (key > 0 && padUsed->GetCharJustDown(key) &&
+			    info->m_eWeaponFire == WEAPON_FIRE_INSTANT_HIT && info->m_nAmountofAmmunition > 1 &&
+			    weapon->m_nAmmoInClip < fullClip &&
+			    (weapon->m_eWeaponState == WEAPONSTATE_READY || weapon->m_eWeaponState == WEAPONSTATE_FIRING)) {
+				weapon->m_eWeaponState = WEAPONSTATE_RELOADING;
+				weapon->m_nTimer = CTimer::GetTimeInMilliseconds() + info->m_nReload;
+				if (CWorld::Players[CWorld::PlayerInFocus].m_bFastReload)
+					weapon->m_nTimer = CTimer::GetTimeInMilliseconds() + info->m_nReload / 4;
+
+				AnimationId reloadAnim = ANIM_STD_NUM;
+				if (info->m_AnimToPlay == ANIM_STD_WEAPON_HGUN_BODY)
+					reloadAnim = ANIM_STD_HGUN_RELOAD;
+				else if (info->m_AnimToPlay == ANIM_STD_WEAPON_AK_BODY)
+					reloadAnim = ANIM_STD_AK_RELOAD;
+				if (reloadAnim != ANIM_STD_NUM && !RpAnimBlendClumpGetAssociation(GetClump(), reloadAnim))
+					CAnimManager::BlendAnimation(GetClump(), ASSOCGRP_STD, reloadAnim, 8.0f);
+			}
+		}
+	}
+
 	// [Camera] FirstPerson: tecla (por defecto V) alterna primera/tercera persona.
 	{
 		extern bool gbFirstPersonOption, gbFirstPersonOn;
