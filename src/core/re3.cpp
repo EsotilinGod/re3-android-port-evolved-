@@ -489,6 +489,13 @@ void SaveINIControllerSettings()
 	GetIniFile().write(cfg);
 }
 
+// Regeneracion de vida estilo GTA V (configurable en re3.ini, seccion [HealthRegen]).
+// La vida sube sola despues de un rato sin recibir dano, pero solo hasta un tope.
+bool gbHealthRegen = true;            // Enabled
+float gfHealthRegenPerSecond = 1.0f;  // PerSecond: puntos de vida por segundo
+float gfHealthRegenDelay = 5.0f;      // Delay: segundos sin recibir dano antes de empezar
+float gfHealthRegenMaxPercent = 50.0f;// MaxPercent: tope de la regeneracion (100 = vida completa)
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -591,6 +598,11 @@ bool LoadINISettings()
 	CCarCtrl::MaxNumberOfCarsInUse = DEFAULT_MAX_NUMBER_OF_CARS * CIniFile::CarNumberMultiplier;
 #endif
 
+	ReadIniIfExists("HealthRegen", "Enabled", &gbHealthRegen);
+	ReadIniIfExists("HealthRegen", "PerSecond", &gfHealthRegenPerSecond);
+	ReadIniIfExists("HealthRegen", "Delay", &gfHealthRegenDelay);
+	ReadIniIfExists("HealthRegen", "MaxPercent", &gfHealthRegenMaxPercent);
+
 	return true;
 }
 
@@ -675,6 +687,11 @@ void SaveINISettings()
 		}
 	}
 #endif
+
+	StoreIni("HealthRegen", "Enabled", (uint8)gbHealthRegen);
+	StoreIni("HealthRegen", "PerSecond", gfHealthRegenPerSecond);
+	StoreIni("HealthRegen", "Delay", gfHealthRegenDelay);
+	StoreIni("HealthRegen", "MaxPercent", gfHealthRegenMaxPercent);
 
 	GetIniFile().write(cfg);
 }

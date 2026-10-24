@@ -1349,6 +1349,28 @@ CPlayerPed::ProcessControl(void)
 			SetDead();
 		return;
 	}
+
+	// Regeneracion de vida estilo GTA V: tras unos segundos sin recibir dano,
+	// la vida sube sola hasta un tope (por defecto 50%). Ver [HealthRegen] en re3.ini.
+	{
+		extern bool gbHealthRegen;
+		extern float gfHealthRegenPerSecond, gfHealthRegenDelay, gfHealthRegenMaxPercent;
+		static float fLastHealth = -1.0f;
+		static uint32 nLastDamageTime = 0;
+		uint32 now = CTimer::GetTimeInMilliseconds();
+
+		// Cualquier baja de vida (balas, golpes, caidas, fuego, choques) reinicia la espera.
+		// Un salto grande de tiempo (cargar partida) tambien, para no regenerar de golpe.
+		if (m_fHealth < fLastHealth || now < nLastDamageTime)
+			nLastDamageTime = now;
+
+		float cap = 100.0f * Clamp(gfHealthRegenMaxPercent, 0.0f, 100.0f) / 100.0f;
+		if (gbHealthRegen && m_nPedState != PED_ARRESTED && m_fHealth > 0.0f && m_fHealth < cap &&
+		    now - nLastDamageTime >= (uint32)(gfHealthRegenDelay * 1000.0f))
+			m_fHealth = Min(cap, m_fHealth + gfHealthRegenPerSecond * CTimer::GetTimeStepInSeconds());
+
+		fLastHealth = m_fHealth;
+	}
 	if (m_nPedState == PED_DRIVING && m_objective != OBJECTIVE_LEAVE_CAR) {
 		if (m_pMyVehicle->IsCar() && ((CAutomobile*)m_pMyVehicle)->Damage.GetDoorStatus(DOOR_FRONT_LEFT) == DOOR_STATUS_SWINGING) {
 			CAnimBlendAssociation *rollDoorAssoc = RpAnimBlendClumpGetAssociation(GetClump(), ANIM_STD_CAR_CLOSE_DOOR_ROLLING_LHS);
