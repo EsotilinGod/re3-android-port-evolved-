@@ -3243,10 +3243,13 @@ CAutomobile::VehicleDamage(float impulse, uint16 damagedPiece)
 		return;
 
 	// damage flipped over car
+	// Ver [Vehicles] FlipExplosion en re3.ini: 0 = los autos volcados no se incendian solos.
+	extern bool gbFlipExplosion;
 	if(GetUp().z < 0.0f && this != FindPlayerVehicle()){
 		if(bNotDamagedUpsideDown || GetStatus() == STATUS_PLAYER_REMOTE || bIsInWater)
 			return;
-		m_fHealth -= 4.0f*CTimer::GetTimeStep();
+		if(gbFlipExplosion)
+			m_fHealth -= 4.0f*CTimer::GetTimeStep();
 	}
 
 	if(impulse > 25.0f && GetStatus() != STATUS_WRECKED){

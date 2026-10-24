@@ -496,6 +496,10 @@ float gfHealthRegenPerSecond = 1.0f;  // PerSecond: puntos de vida por segundo
 float gfHealthRegenDelay = 5.0f;      // Delay: segundos sin recibir dano antes de empezar
 float gfHealthRegenMaxPercent = 50.0f;// MaxPercent: tope de la regeneracion (100 = vida completa)
 
+// [Vehicles] FlipExplosion: 1 = comportamiento original (un auto volcado se
+// incendia y explota), 0 = los autos volcados ya no se danan por estar al reves.
+bool gbFlipExplosion = false;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -602,6 +606,7 @@ bool LoadINISettings()
 	ReadIniIfExists("HealthRegen", "PerSecond", &gfHealthRegenPerSecond);
 	ReadIniIfExists("HealthRegen", "Delay", &gfHealthRegenDelay);
 	ReadIniIfExists("HealthRegen", "MaxPercent", &gfHealthRegenMaxPercent);
+	ReadIniIfExists("Vehicles", "FlipExplosion", &gbFlipExplosion);
 
 	return true;
 }
@@ -692,6 +697,7 @@ void SaveINISettings()
 	StoreIni("HealthRegen", "PerSecond", gfHealthRegenPerSecond);
 	StoreIni("HealthRegen", "Delay", gfHealthRegenDelay);
 	StoreIni("HealthRegen", "MaxPercent", gfHealthRegenMaxPercent);
+	StoreIni("Vehicles", "FlipExplosion", (uint8)gbFlipExplosion);
 
 	GetIniFile().write(cfg);
 }
