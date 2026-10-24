@@ -30,7 +30,13 @@ jobs:
         working-directory: android/launcher
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleStandardRelease
+          set -o pipefail
+          ./gradlew --no-daemon assembleStandardRelease 2>&1 | tee build.log
+
+      - name: Mostrar errores de compilacion
+        if: failure()
+        working-directory: android/launcher
+        run: grep -E "error:|undefined|FAILED|What went wrong" -A2 build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
 
       - uses: actions/upload-artifact@v4
         with:

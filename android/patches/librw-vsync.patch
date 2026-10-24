@@ -1,8 +1,20 @@
 diff --git a/src/gl/gl3device.cpp b/src/gl/gl3device.cpp
-index d5eacc8..fa8014b 100644
+index d5eacc8..2eace59 100644
 --- a/src/gl/gl3device.cpp
 +++ b/src/gl/gl3device.cpp
-@@ -1406,10 +1406,20 @@ showRaster(Raster *raster, uint32 flags)
+@@ -1399,6 +1399,11 @@ clearCamera(Camera *cam, RGBA *col, uint32 mode)
+ 		glDisable(GL_SCISSOR_TEST);
+ }
+ 
++}}
++// re3 Android: intervalo de vsync que fija el juego (ver psCameraShowRaster).
++int gLibrwSwapInterval = 1;
++namespace rw { namespace gl3 {
++
+ static void
+ showRaster(Raster *raster, uint32 flags)
+ {
+@@ -1406,10 +1411,19 @@ showRaster(Raster *raster, uint32 flags)
  //		raster->width, raster->height);
  
  #ifdef LIBRW_SDL2
@@ -15,7 +27,6 @@ index d5eacc8..fa8014b 100644
 +	// hace falta: llamar eglSwapInterval en cada cuadro causa tirones en
 +	// algunos drivers.
 +	{
-+		extern int gLibrwSwapInterval;
 +		static int lastInterval = -1;
 +		int interval = (flags & Raster::FLIPWAITVSYNCH) ? (gLibrwSwapInterval > 0 ? gLibrwSwapInterval : 1) : 0;
 +		if(interval != lastInterval){

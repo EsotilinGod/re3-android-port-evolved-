@@ -140,8 +140,8 @@ psCameraBeginUpdate(RwCamera *camera)
 /*
  *****************************************************************************
  */
-// Intervalo de vsync que usa librw (ver android/patches/librw-vsync.patch).
-int gLibrwSwapInterval = 1;
+// Intervalo de vsync que usa librw (definido en android/patches/librw-vsync.patch).
+extern int gLibrwSwapInterval;
 
 // Frecuencia de la pantalla (60/90/120 Hz...), consultada cada ~2 s.
 static int
