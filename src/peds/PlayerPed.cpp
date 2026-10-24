@@ -1484,6 +1484,50 @@ CPlayerPed::ProcessControl(void)
 		}
 	}
 
+	// [Player] Crouch: agacharse. GTA III no tiene animaciones de caminar ni de
+	// disparar agachado para el jugador, asi que es una postura quieta (la de
+	// los policias cubriendose): moverse, saltar, correr o disparar te levanta.
+	// Tecla configurable (por defecto X) o L3 en mando.
+	{
+		extern bool gbPlayerCrouch;
+		extern char gsCrouchKey[8];
+		static bool bCrouched = false;
+		bool togglePressed = false;
+		if (gbPlayerCrouch && padUsed && !padUsed->ArePlayerControlsDisabled()) {
+			int key = gsCrouchKey[0];
+			if (key >= 'a' && key <= 'z')
+				key -= 'a' - 'A';
+			if (key > 0 && padUsed->GetCharJustDown(key))
+				togglePressed = true;
+			if (padUsed->NewState.LeftShock && !padUsed->OldState.LeftShock)
+				togglePressed = true;
+		}
+		bool canCrouch = gbPlayerCrouch && !bInVehicle && !bIsInTheAir && !bIsLanding && !bIsInWater &&
+			m_fHealth > 0.0f && (m_nPedState == PED_IDLE || m_nPedState == PED_NONE);
+		bool wantsAction = padUsed &&
+			(CVector2D(padUsed->GetPedWalkLeftRight(), padUsed->GetPedWalkUpDown()).Magnitude() > 0.0f ||
+			 padUsed->JumpJustDown() || padUsed->GetSprint() || padUsed->GetWeapon());
+
+		if (bCrouched) {
+			if (togglePressed || !canCrouch || wantsAction) {
+				CAnimBlendAssociation *duckAssoc = RpAnimBlendClumpGetAssociation(GetClump(), ANIM_STD_DUCK_LOW);
+				if (duckAssoc)
+					duckAssoc->blendDelta = -4.0f;
+				bIsDucking = false;
+				bCrouched = false;
+			} else {
+				m_duckTimer = CTimer::GetTimeInMilliseconds() + 1000; // que Duck() no lo quite
+				m_fMoveSpeed = 0.0f;
+			}
+		} else if (togglePressed && canCrouch && !wantsAction) {
+			CAnimManager::BlendAnimation(GetClump(), ASSOCGRP_STD, ANIM_STD_DUCK_LOW, 4.0f);
+			bIsDucking = true;
+			m_duckTimer = CTimer::GetTimeInMilliseconds() + 1000;
+			m_fMoveSpeed = 0.0f;
+			bCrouched = true;
+		}
+	}
+
 	switch (m_nPedState) {
 		case PED_NONE:
 		case PED_IDLE:

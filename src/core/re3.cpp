@@ -521,6 +521,10 @@ float gfAimZoomShoulder = 0.45f;     // Shoulder: metros hacia el hombro derecho
 // [Weapons] M16ThirdPerson: 1 = la M16 se apunta en tercera persona como la AK-47.
 bool gbM16ThirdPerson = true;
 
+// [Player] Crouch / CrouchKey: agacharse con una tecla (letra) o L3 en mando.
+bool gbPlayerCrouch = true;
+char gsCrouchKey[8] = "X";
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -636,6 +640,8 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "AimZoomDistancePercent", &gfAimZoomDistPercent);
 	ReadIniIfExists("Camera", "AimZoomShoulder", &gfAimZoomShoulder);
 	ReadIniIfExists("Weapons", "M16ThirdPerson", &gbM16ThirdPerson);
+	ReadIniIfExists("Player", "Crouch", &gbPlayerCrouch);
+	ReadIniIfExists("Player", "CrouchKey", gsCrouchKey, sizeof(gsCrouchKey));
 
 	return true;
 }
@@ -735,6 +741,8 @@ void SaveINISettings()
 	StoreIni("Camera", "AimZoomDistancePercent", gfAimZoomDistPercent);
 	StoreIni("Camera", "AimZoomShoulder", gfAimZoomShoulder);
 	StoreIni("Weapons", "M16ThirdPerson", (uint8)gbM16ThirdPerson);
+	StoreIni("Player", "Crouch", (uint8)gbPlayerCrouch);
+	StoreIni("Player", "CrouchKey", gsCrouchKey, sizeof(gsCrouchKey));
 
 	GetIniFile().write(cfg);
 }
