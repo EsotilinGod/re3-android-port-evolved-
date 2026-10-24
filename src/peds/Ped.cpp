@@ -1505,6 +1505,22 @@ CPed::UpdatePosition(void)
 			float slideMult = -m_pCurrentPhysSurface->m_vecTurnSpeed.MagnitudeSqr();
 			velocityOfSurface = slideMult * offsetToSurface * CTimer::GetTimeStep() + (surfaceTurnVelocity + surfaceMoveVelocity);
 			m_vecMoveSpeed.z = slideMult * offsetToSurface.z * CTimer::GetTimeStep() + (surfaceTurnVelocity.z + surfaceMoveVelocity.z);
+		} else if (IsPlayer() && m_pCurrentPhysSurface->IsVehicle() && ((CVehicle*)m_pCurrentPhysSurface)->IsBoat()) {
+			// Fix: el jugador salia disparado al pisar un bote amarrado (p. ej. al
+			// bajar las escaleras del muelle). m_vecOffsetFromPhysSurface se guarda
+			// una sola vez al tocar el bote y queda desactualizado; ademas un bote
+			// trabado contra el muelle vibra con mucha velocidad de giro. El termino
+			// giro x distancia se disparaba y lanzaba al jugador al mar. Se recalcula
+			// la distancia cada frame y se limita el aporte del giro.
+			CVector offsetToSurface = GetPosition() - m_pCurrentPhysSurface->GetPosition();
+			offsetToSurface.z -= FEET_OFFSET;
+			CVector turnVel = CrossProduct(m_pCurrentPhysSurface->m_vecTurnSpeed, offsetToSurface);
+			CVector2D turnVel2D(turnVel.x, turnVel.y);
+			const float maxTurnVel = 0.03f; // ~1.5 m/s
+			float turnMag = turnVel2D.Magnitude();
+			if (turnMag > maxTurnVel)
+				turnVel2D *= maxTurnVel / turnMag;
+			velocityOfSurface = CVector2D(m_pCurrentPhysSurface->m_vecMoveSpeed.x, m_pCurrentPhysSurface->m_vecMoveSpeed.y) + turnVel2D;
 		} else {
 			velocityOfSurface = m_pCurrentPhysSurface->GetSpeed(m_vecOffsetFromPhysSurface);
 		}
@@ -1538,6 +1554,10 @@ CPed::UpdatePosition(void)
 			changeMult = 0.002f * CTimer::GetTimeStep();
 		} else if (!(m_pCurrentPhysSurface->IsVehicle() && ((CVehicle*)m_pCurrentPhysSurface)->IsBoat())) {
 			changeMult = 0.01f * CTimer::GetTimeStep();
+		} else if (IsPlayer()) {
+			// En botes el cambio de velocidad era instantaneo (sin limite): un solo
+			// frame con un tiron del bote bastaba para lanzar al jugador.
+			changeMult = 0.05f * CTimer::GetTimeStep();
 		}
 
 		if (speedChange > changeMult) {
