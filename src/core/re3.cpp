@@ -539,6 +539,8 @@ float gfMouseSmoothing = 0.5f;
 bool gbFirstPersonOption = true;
 bool gbFirstPersonOn = false;
 char gsFirstPersonKey[8] = "V";
+// [Camera] FirstPersonBody: 1 = se ven brazos, arma y cuerpo del personaje.
+bool gbFirstPersonBody = true;
 
 bool LoadINISettings()
 {
@@ -662,6 +664,7 @@ bool LoadINISettings()
 	ReadIniIfExists("Mouse", "Smoothing", &gfMouseSmoothing);
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
+	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
 
 	return true;
 }
@@ -768,6 +771,7 @@ void SaveINISettings()
 	StoreIni("Mouse", "Smoothing", gfMouseSmoothing);
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
+	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
 
 	GetIniFile().write(cfg);
 }

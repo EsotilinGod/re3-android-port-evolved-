@@ -2962,7 +2962,20 @@ CCam::Process_1rstPersonPedOnPC(const CVector&, float TargetOrientation, float, 
 		TargetCoors.z = 3.0f * Sin(Alpha) + Source.z;
 		Front = TargetCoors - Source;
 		Front.Normalise();
-		Source += Front*0.4f;
+
+		// [Camera] FirstPersonBody: en vez de adelantar la camara 40 cm (y
+		// recortar todo lo que este a menos de 90 cm), se pone justo delante
+		// de los ojos y se baja el plano de recorte cercano. Asi se ven los
+		// brazos y el arma del propio modelo de Claude al apuntar o disparar,
+		// y el cuerpo al mirar hacia abajo, como los mods de primera persona
+		// de SA/VC. La cara queda detras de la camara y no se ve.
+		extern bool gbFirstPersonOn, gbFirstPersonBody;
+		if(gbFirstPersonOn && gbFirstPersonBody && Mode == MODE_1STPERSON_RUNABOUT &&
+		   CamTargetEntity == FindPlayerPed()){
+			Source += Front*0.12f;
+			RwCameraSetNearClipPlane(Scene.camera, 0.1f);
+		}else
+			Source += Front*0.4f;
 
 		TheCamera.m_AlphaForPlayerAnim1rstPerson = Alpha;
 
