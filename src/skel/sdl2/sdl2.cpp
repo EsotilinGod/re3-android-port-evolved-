@@ -38,6 +38,12 @@ long _dwOperatingSystemVersion;
 #include "JavaWrapper.h"
 #include "TouchControls.h"
 extern char* StorageRootBuffer;
+
+// Teclado/raton fisico (USB, Bluetooth o scrcpy -K -M) manejando el juego.
+// Se activa con cualquier evento real de teclado o raton y se desactiva con
+// un toque de dedo; mientras este activo se ocultan los controles tactiles
+// (ver nativeIsControllerConnected) y CPad::UpdateMouse() lee el raton.
+bool gbKbmActive = false;
 #endif
 
 #define MAX_SUBSYSTEMS		(16)
@@ -1247,6 +1253,11 @@ keypressCB(int key, int action, int mods)
     if (ks == rsNULL)
         return;
 
+#if defined ANDROID
+    if (action == SDL_KEYDOWN)
+        gbKbmActive = true;
+#endif
+
     switch (action) {
         case SDL_KEYDOWN:	RsKeyboardEventHandler(rsKEYDOWN, &ks); break;
         case SDL_KEYUP:		RsKeyboardEventHandler(rsKEYUP, &ks); break;
@@ -1290,15 +1301,38 @@ windowIconifyCB(int iconified) {
 void inputEventHandler() {
     SDL_Event event;
 
-    if (SDL_PollEvent(&event)) {
+    // Antes era un "if": solo se procesaba UN evento por frame. Con un raton
+    // (que genera decenas de eventos de movimiento por frame) la cola se
+    // atrasaba y las teclas llegaban con segundos de retraso. Se vacia entera.
+    while (SDL_PollEvent(&event)) {
         switch (event.type) {
             case SDL_KEYDOWN:	/* fall-through */
             case SDL_KEYUP:
                 keypressCB(event.key.keysym.sym, event.type, 0);
                 break;
 
-            case SDL_MOUSEMOTION: cursorCB(event.motion.x, event.motion.y); break;
+            case SDL_MOUSEMOTION:
+#if defined ANDROID
+                if (event.motion.which != SDL_TOUCH_MOUSEID)
+                    gbKbmActive = true;
+#endif
+                cursorCB(event.motion.x, event.motion.y);
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+#if defined ANDROID
+                if (event.button.which != SDL_TOUCH_MOUSEID)
+                    gbKbmActive = true;
+#endif
+                break;
             case SDL_MOUSEWHEEL: scrollCB(event.wheel.x, event.wheel.y); break;
+
+#if defined ANDROID
+            // Un dedo en la pantalla (con el overlay oculto los toques llegan
+            // a SDL): volver a los controles tactiles.
+            case SDL_FINGERDOWN:
+                gbKbmActive = false;
+                break;
+#endif
 
             // note that SDL_CONTROLLERDEVICEADDED/REMOVED exists, but it did not work for me
             case SDL_JOYDEVICEADDED:	/* fall-through */
@@ -1912,7 +1946,7 @@ RwV2d rightStickPos;
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_re3_game_TouchControlsView_nativeIsControllerConnected(JNIEnv *env, jobject obj)
 {
-    return gamepad1 != nullptr;
+    return gamepad1 != nullptr || gbKbmActive;
 }
 
 // re3 (this repo) never grew SDL2 support upstream -- ControllerConfig.cpp's
@@ -2016,7 +2050,9 @@ void CaptureTouchPad(RwInt32 padID)
     // compute the correct m_nHoverOption for it before ProcessButtonPresses()
     // ever sees LMB true for this tap.
     static bool s_wasTouchDown = false;
-    if (FrontEndMenuManager.m_bMenuActive) {
+    // Con raton fisico activo, el cursor del menu lo maneja CPad::UpdateMouse();
+    // no pisarlo con la ultima posicion del dedo.
+    if (FrontEndMenuManager.m_bMenuActive && !gbKbmActive) {
         bool rawDown = g_TouchState.menuMouseDown;
         CPad::OldMouseControllerState.LMB = CPad::NewMouseControllerState.LMB;
         FrontEndMenuManager.m_nMouseTempPosX = (int32)g_TouchState.menuMouseX;

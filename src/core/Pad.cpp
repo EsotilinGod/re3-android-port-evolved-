@@ -11,6 +11,9 @@
 #endif
 #endif
 
+#if defined LIBRW_SDL2
+#include <SDL.h>
+#endif
 #include "Pad.h"
 #include "ControllerConfig.h"
 #include "Timer.h"
@@ -534,8 +537,14 @@ CMouseControllerState CMousePointerStateHelper::GetMouseSetUp()
 		}
 	}
 #elif defined LIBRW_SDL2
-	// No real mouse on Android -- leave every button unbound, same as the
-	// "no mouse found" outcome on desktop.
+	// SDL2 no permite saber cuantos botones tiene el raton (igual que GLFW):
+	// se asignan todos. Sin raton conectado nunca se pulsan, asi que no
+	// estorba a los controles tactiles.
+	state.MMB = true;
+	state.RMB = true;
+	state.LMB = true;
+	state.WHEELDN = true;
+	state.WHEELUP = true;
 #else
 	// It seems there is no way to get number of buttons on mouse, so assign all buttons if we have mouse.
 	double xpos = 1.0f, ypos;
@@ -596,10 +605,72 @@ void CPad::UpdateMouse()
 		}
 	}
 #elif defined LIBRW_SDL2
-	// No real mouse on Android -- the menu "mouse" driven by the on-screen
-	// touch controls goes through CPad::NewMouseControllerState directly
-	// (CaptureTouchPad() in skel/sdl2/sdl2.cpp), bypassing this function
-	// entirely, so there's nothing for it to poll here.
+#if defined ANDROID
+	extern bool gbKbmActive;
+	// Sin teclado/raton fisico: el "raton" del menu lo maneja el overlay
+	// tactil escribiendo NewMouseControllerState directo (CaptureTouchPad()),
+	// asi que aqui no hay que tocar nada.
+	if (!gbKbmActive) {
+		if (SDL_GetRelativeMouseMode())
+			SDL_SetRelativeMouseMode(SDL_FALSE);
+		return;
+	}
+#endif
+	if ( IsForegroundApp() )
+	{
+		// En juego: modo relativo (pointer capture en Android 8+), el raton
+		// no choca con los bordes y se obtiene el delta crudo, como DirectInput.
+		// En menus: modo absoluto, para que el cursor del menu siga al raton.
+		static bool bRelative = false;
+		static bool bSkipFrame = false;
+		bool bWantRelative = !FrontEndMenuManager.m_bMenuActive;
+		if (bWantRelative != bRelative) {
+			SDL_SetRelativeMouseMode(bWantRelative ? SDL_TRUE : SDL_FALSE);
+			bRelative = bWantRelative;
+			bSkipFrame = true; // el primer delta tras el cambio trae basura
+		}
+
+		int xpos, ypos, dx, dy;
+		Uint32 buttons = SDL_GetMouseState(&xpos, &ypos);
+		SDL_GetRelativeMouseState(&dx, &dy);
+		if (bSkipFrame) {
+			dx = dy = 0;
+			bSkipFrame = false;
+		}
+
+		int32 signX = 1;
+		int32 signy = 1;
+
+		if (!FrontEndMenuManager.m_bMenuActive)
+		{
+			if (MousePointerStateHelper.bInvertVertically)
+				signy = -1;
+			if (MousePointerStateHelper.bInvertHorizontally)
+				signX = -1;
+		}
+
+		PCTempMouseControllerState.Clear();
+
+		PCTempMouseControllerState.x = (float)(signX * dx);
+		PCTempMouseControllerState.y = (float)(signy * dy);
+		PCTempMouseControllerState.LMB = !!(buttons & SDL_BUTTON(SDL_BUTTON_LEFT));
+		PCTempMouseControllerState.RMB = !!(buttons & SDL_BUTTON(SDL_BUTTON_RIGHT));
+		PCTempMouseControllerState.MMB = !!(buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE));
+		PCTempMouseControllerState.MXB1 = !!(buttons & SDL_BUTTON(SDL_BUTTON_X1));
+		PCTempMouseControllerState.MXB2 = !!(buttons & SDL_BUTTON(SDL_BUTTON_X2));
+
+		if (PSGLOBAL(mouseWheel) > 0)
+			PCTempMouseControllerState.WHEELUP = 1;
+		else if (PSGLOBAL(mouseWheel) < 0)
+			PCTempMouseControllerState.WHEELDN = 1;
+
+		PSGLOBAL(lastMousePos.x) = xpos;
+		PSGLOBAL(lastMousePos.y) = ypos;
+		PSGLOBAL(mouseWheel) = 0.0f;
+
+		OldMouseControllerState = NewMouseControllerState;
+		NewMouseControllerState = PCTempMouseControllerState;
+	}
 #else
 	if ( IsForegroundApp() && PSGLOBAL(cursorIsInWindow) )
 	{

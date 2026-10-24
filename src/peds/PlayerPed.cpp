@@ -1020,7 +1020,10 @@ CPlayerPed::ProcessPlayerWeapon(CPad *padUsed)
 	// Automobile.cpp for the stick-driven look camera though, so the real
 	// static flag can't just be forced off globally -- used in place of
 	// CCamera::m_bUseMouse3rdPerson at every read below instead.
-	const bool bUsingMouse3rdPerson = false;
+	// Con raton fisico se respeta la bandera real: apuntado libre con el
+	// raton, sin auto-lock, igual que en PC. Con tactil/mando sigue en false.
+	extern bool gbKbmActive;
+	const bool bUsingMouse3rdPerson = gbKbmActive && CCamera::m_bUseMouse3rdPerson;
 #else
 	const bool &bUsingMouse3rdPerson = CCamera::m_bUseMouse3rdPerson;
 #endif

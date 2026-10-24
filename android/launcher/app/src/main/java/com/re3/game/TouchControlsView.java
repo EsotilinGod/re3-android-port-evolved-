@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.DisplayCutout;
+import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
@@ -815,6 +816,12 @@ public class TouchControlsView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // Los clics de un raton real (USB/Bluetooth/scrcpy) llegan como
+        // "toques" con fuente SOURCE_MOUSE: no son nuestros, dejarlos pasar
+        // a SDLSurface para que el juego los reciba como clics de raton.
+        if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+            return false;
+        }
         int action = event.getActionMasked();
         int index = event.getActionIndex();
         int pointerId = event.getPointerId(index);
