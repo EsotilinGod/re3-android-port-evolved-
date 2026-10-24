@@ -861,8 +861,13 @@ CCam::KeepTrackOfTheSpeed(const CVector &source, const CVector &target, const CV
 bool
 CCam::Using3rdPersonMouseCam(void) 
 {
+	// [Camera] FirstPerson: la primera persona a pie se controla igual que la
+	// camara con raton (mover/strafe, disparar hacia la mira), asi que todo el
+	// codigo que pregunta por la camara con raton tambien la cubre.
+	extern bool gbFirstPersonOn;
 	return CCamera::m_bUseMouse3rdPerson &&
 		(Mode == MODE_FOLLOWPED ||
+			gbFirstPersonOn && Mode == MODE_1STPERSON_RUNABOUT && CamTargetEntity == FindPlayerPed() ||
 			TheCamera.m_bPlayerIsInGarage &&
 			FindPlayerPed() && FindPlayerPed()->m_nPedState != PED_DRIVING &&
 			Mode != MODE_TOPDOWN && CamTargetEntity == FindPlayerPed());

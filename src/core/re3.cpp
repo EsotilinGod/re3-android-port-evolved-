@@ -534,6 +534,12 @@ int32 gnFPSLimit = 60;
 // [Mouse] Smoothing: 0 = crudo, 0.5 = suave (por defecto), 0.8 = muy suave.
 float gfMouseSmoothing = 0.5f;
 
+// [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
+// la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
+bool gbFirstPersonOption = true;
+bool gbFirstPersonOn = false;
+char gsFirstPersonKey[8] = "V";
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -654,6 +660,8 @@ bool LoadINISettings()
 	ReadIniIfExists("Display", "VSync", &gbVSync);
 	ReadIniIfExists("Display", "FPSLimit", &gnFPSLimit);
 	ReadIniIfExists("Mouse", "Smoothing", &gfMouseSmoothing);
+	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
+	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 
 	return true;
 }
@@ -758,6 +766,8 @@ void SaveINISettings()
 	StoreIni("Display", "VSync", (uint8)gbVSync);
 	StoreIni("Display", "FPSLimit", gnFPSLimit);
 	StoreIni("Mouse", "Smoothing", gfMouseSmoothing);
+	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
+	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 
 	GetIniFile().write(cfg);
 }

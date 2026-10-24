@@ -1346,6 +1346,20 @@ CCamera::CamControl(void)
 
 	m_bIdleOn = false;
 
+	// [Camera] FirstPerson: con la primera persona activada (tecla V), a pie se
+	// usa la camara en la cabeza del jugador. Las vistas especiales (francotirador,
+	// lanzacohetes, M16 en 1a persona, muerte, arresto, scripts) no se tocan.
+	{
+		extern bool gbFirstPersonOn;
+		if(gbFirstPersonOn && pTargetEntity && pTargetEntity == FindPlayerPed() && !FindPlayerVehicle() &&
+		   WhoIsInControlOfTheCamera != CAMCONTROL_SCRIPT && !m_WideScreenOn &&
+		   (ReqMode == CCam::MODE_FOLLOWPED || ReqMode == CCam::MODE_SYPHON ||
+		    ReqMode == CCam::MODE_SYPHON_CRIM_IN_FRONT || ReqMode == CCam::MODE_SPECIAL_FIXED_FOR_SYPHON ||
+		    ReqMode == CCam::MODE_TOP_DOWN_PED || ReqMode == CCam::MODE_FIGHT_CAM ||
+		    ReqMode == CCam::MODE_1STPERSON))
+			ReqMode = CCam::MODE_1STPERSON_RUNABOUT;
+	}
+
 	if(DebugCamMode)
 		ReqMode = DebugCamMode;
 
@@ -3564,6 +3578,8 @@ CCamera::Find3rdPersonCamTargetVector(float dist, CVector pos, CVector &source, 
 	}else{
 		float angleX = DEGTORAD((m_f3rdPersonCHairMultX-0.5f) * 1.8f * 0.5f * Cams[ActiveCam].FOV * CDraw::GetAspectRatio());
 		float angleY = DEGTORAD((0.5f-m_f3rdPersonCHairMultY) * 1.8f * 0.5f * Cams[ActiveCam].FOV);
+		if(Cams[ActiveCam].Mode == CCam::MODE_1STPERSON_RUNABOUT)
+			angleX = angleY = 0.0f; // en primera persona la mira esta al centro
 		source = Cams[ActiveCam].Source;
 		target = Cams[ActiveCam].Front;
 		target += Cams[ActiveCam].Up * Tan(angleY);
@@ -3582,6 +3598,8 @@ CCamera::Find3rdPersonQuickAimPitch(void)
 
 	float rot = Asin(clampedFrontZ);
 
+	if(Cams[ActiveCam].Mode == CCam::MODE_1STPERSON_RUNABOUT)
+		return -rot; // mira al centro en primera persona
 	return -(DEGTORAD(((0.5f - m_f3rdPersonCHairMultY) * 1.8f * 0.5f * Cams[ActiveCam].FOV)) + rot);
 }
 

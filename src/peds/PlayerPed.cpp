@@ -1484,6 +1484,23 @@ CPlayerPed::ProcessControl(void)
 		}
 	}
 
+	// [Camera] FirstPerson: tecla (por defecto V) alterna primera/tercera persona.
+	{
+		extern bool gbFirstPersonOption, gbFirstPersonOn;
+		extern char gsFirstPersonKey[8];
+		if (!gbFirstPersonOption)
+			gbFirstPersonOn = false;
+		else if (padUsed && !padUsed->ArePlayerControlsDisabled()) {
+			int key = gsFirstPersonKey[0];
+			if (key >= 'a' && key <= 'z')
+				key -= 'a' - 'A';
+			if (key > 0 && padUsed->GetCharJustDown(key) && !bInVehicle) {
+				gbFirstPersonOn = !gbFirstPersonOn;
+				TheCamera.ClearPlayerWeaponMode();
+			}
+		}
+	}
+
 	// [Player] Crouch: agacharse. GTA III no tiene animaciones de caminar ni de
 	// disparar agachado para el jugador, asi que es una postura quieta (la de
 	// los policias cubriendose): moverse, saltar, correr o disparar te levanta.

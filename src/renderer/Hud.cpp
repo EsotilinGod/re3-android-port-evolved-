@@ -382,7 +382,7 @@ void CHud::Draw()
 			float fMultBright = SpriteBrightness / 30.0f * (0.25f * fStep + 0.75f);
 			CRect rect;
 #ifdef GTA_PC
-			if (DrawCrossHairPC && TheCamera.Cams[TheCamera.ActiveCam].Using3rdPersonMouseCam()) {
+			if (DrawCrossHairPC && TheCamera.Cams[TheCamera.ActiveCam].Using3rdPersonMouseCam() && Mode != CCam::MODE_1STPERSON_RUNABOUT) {
 				float f3rdX = SCREEN_WIDTH * TheCamera.m_f3rdPersonCHairMultX;
 				float f3rdY = SCREEN_HEIGHT * TheCamera.m_f3rdPersonCHairMultY;
 #ifdef ASPECT_RATIO_SCALE
