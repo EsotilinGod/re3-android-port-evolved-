@@ -1032,9 +1032,13 @@ CPlayerPed::ProcessPlayerWeapon(CPad *padUsed)
 		CWeaponEffects::ClearCrossHair();
 		ClearPointGunAt();
 	}
+	// [Weapons] M16ThirdPerson: 1 = la M16 apunta en tercera persona como la AK-47
+	// (sin pasar a la vista en primera persona). Con esto tambien usa AimZoom.
+	extern bool gbM16ThirdPerson;
+	bool m16FirstPerson = GetWeapon()->m_eWeaponType == WEAPONTYPE_M16 && !gbM16ThirdPerson;
 	if (!m_pFire) {
 		if (GetWeapon()->m_eWeaponType == WEAPONTYPE_ROCKETLAUNCHER ||
-			GetWeapon()->m_eWeaponType == WEAPONTYPE_SNIPERRIFLE || GetWeapon()->m_eWeaponType == WEAPONTYPE_M16) {
+			GetWeapon()->m_eWeaponType == WEAPONTYPE_SNIPERRIFLE || m16FirstPerson) {
 			if (padUsed->TargetJustDown()) {
 				SetStoredState();
 				SetPedState(PED_SNIPER_MODE);

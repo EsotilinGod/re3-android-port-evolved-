@@ -518,6 +518,9 @@ float gfAimZoomFOVPercent = 80.0f;   // FOVPercent: 100 = sin zoom, menos = mas 
 float gfAimZoomDistPercent = 55.0f;  // DistancePercent: distancia de la camara al apuntar
 float gfAimZoomShoulder = 0.45f;     // Shoulder: metros hacia el hombro derecho (negativo = izquierdo)
 
+// [Weapons] M16ThirdPerson: 1 = la M16 se apunta en tercera persona como la AK-47.
+bool gbM16ThirdPerson = true;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -632,6 +635,7 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "AimZoomFOVPercent", &gfAimZoomFOVPercent);
 	ReadIniIfExists("Camera", "AimZoomDistancePercent", &gfAimZoomDistPercent);
 	ReadIniIfExists("Camera", "AimZoomShoulder", &gfAimZoomShoulder);
+	ReadIniIfExists("Weapons", "M16ThirdPerson", &gbM16ThirdPerson);
 
 	return true;
 }
@@ -730,6 +734,7 @@ void SaveINISettings()
 	StoreIni("Camera", "AimZoomFOVPercent", gfAimZoomFOVPercent);
 	StoreIni("Camera", "AimZoomDistancePercent", gfAimZoomDistPercent);
 	StoreIni("Camera", "AimZoomShoulder", gfAimZoomShoulder);
+	StoreIni("Weapons", "M16ThirdPerson", (uint8)gbM16ThirdPerson);
 
 	GetIniFile().write(cfg);
 }
