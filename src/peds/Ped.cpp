@@ -1392,6 +1392,20 @@ CPed::CalculateNewVelocity(void)
 		m_moved = m_moved * (1 / 100.0f);
 	}
 
+	// [Player] AntiLaunch: m_moved es el desplazamiento de la animacion dividido
+	// por el timestep. Fuera de 30 FPS ese cociente puede dar picos absurdos
+	// (al cambiar de escalon, al cortar/mezclar animaciones) que se traducen en
+	// un "salto" que lanza al jugador. Se limita a algo mayor que un sprint.
+	{
+		extern bool gbPlayerAntiLaunch;
+		const float maxMoved = 0.25f; // ~12 m/s; sprint ronda 0.17
+		if (gbPlayerAntiLaunch && IsPlayer()) {
+			float mag = m_moved.Magnitude();
+			if (mag > maxMoved)
+				m_moved *= maxMoved / mag;
+		}
+	}
+
 	if ((!TheCamera.Cams[TheCamera.ActiveCam].GetWeaponFirstPersonOn() && !TheCamera.Cams[0].Using3rdPersonMouseCam())
 		|| FindPlayerPed() != this || !CanStrafeOrMouseControl())
 		return;

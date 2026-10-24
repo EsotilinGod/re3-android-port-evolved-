@@ -508,6 +508,10 @@ float gfPlayerMassMultiplier = 2.0f;
 // momento, aunque vaya rapido (sin animacion de salto). 0 = original.
 bool gbForceVehicleExit = true;
 
+// [Player] AntiLaunch: 1 = evita que el jugador salga disparado al correr por
+// escaleras/pendientes jugando a mas de 30 FPS. 0 = fisica original.
+bool gbPlayerAntiLaunch = true;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -617,6 +621,7 @@ bool LoadINISettings()
 	ReadIniIfExists("Vehicles", "FlipExplosion", &gbFlipExplosion);
 	ReadIniIfExists("Vehicles", "PlayerMassMultiplier", &gfPlayerMassMultiplier);
 	ReadIniIfExists("Vehicles", "ForceExit", &gbForceVehicleExit);
+	ReadIniIfExists("Player", "AntiLaunch", &gbPlayerAntiLaunch);
 
 	return true;
 }
@@ -710,6 +715,7 @@ void SaveINISettings()
 	StoreIni("Vehicles", "FlipExplosion", (uint8)gbFlipExplosion);
 	StoreIni("Vehicles", "PlayerMassMultiplier", gfPlayerMassMultiplier);
 	StoreIni("Vehicles", "ForceExit", (uint8)gbForceVehicleExit);
+	StoreIni("Player", "AntiLaunch", (uint8)gbPlayerAntiLaunch);
 
 	GetIniFile().write(cfg);
 }

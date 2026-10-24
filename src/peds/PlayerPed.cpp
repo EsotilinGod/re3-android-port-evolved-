@@ -1330,6 +1330,29 @@ CPlayerPed::ProcessControl(void)
 	if (bWasPostponed)
 		return;
 
+	// [Player] AntiLaunch: a mas de 30 FPS la fisica del peaton puede lanzar al
+	// jugador al bajar escaleras corriendo. Si va a pie por sus propios medios
+	// (no lo atropellaron, no lo levanto una explosion, no esta cayendo
+	// por un golpe), su velocidad no puede superar la de un salto en sprint.
+	{
+		extern bool gbPlayerAntiLaunch;
+		if (gbPlayerAntiLaunch && !bInVehicle && m_fHealth > 0.0f && !bKnockedUpIntoAir &&
+		    !m_pCurrentPhysSurface && !bIsInWater &&
+		    m_nPedState != PED_FALL && m_nPedState != PED_GETUP && m_nPedState != PED_DIE &&
+		    m_nPedState != PED_DEAD && m_nPedState != PED_ENTER_CAR && m_nPedState != PED_EXIT_CAR &&
+		    m_nPedState != PED_CARJACK && m_nPedState != PED_DRAG_FROM_CAR) {
+			const float maxHoriz = 0.25f; // ~12 m/s
+			const float maxUp = 0.15f;    // un salto normal da ~0.12
+			float horiz = m_vecMoveSpeed.Magnitude2D();
+			if (horiz > maxHoriz) {
+				m_vecMoveSpeed.x *= maxHoriz / horiz;
+				m_vecMoveSpeed.y *= maxHoriz / horiz;
+			}
+			if (m_vecMoveSpeed.z > maxUp)
+				m_vecMoveSpeed.z = maxUp;
+		}
+	}
+
 	CPad *padUsed = CPad::GetPad(0);
 	m_pWanted->Update();
 	CEntity::PruneReferences();
