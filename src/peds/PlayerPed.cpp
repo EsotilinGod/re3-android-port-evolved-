@@ -1334,6 +1334,50 @@ CPlayerPed::ProcessControl(void)
 	m_pWanted->Update();
 	CEntity::PruneReferences();
 
+	// Auto del jugador mas pesado (ver [Vehicles] PlayerMassMultiplier en re3.ini).
+	// Multiplica masa, inercia de giro y flotabilidad solo del auto que maneja el
+	// jugador; al bajarse se le devuelve su masa original. Motor, frenos y
+	// suspension ya escalan con la masa, asi que se maneja igual: solo cambia
+	// quien "gana" en los choques.
+	{
+		extern float gfPlayerMassMultiplier;
+		static CVehicle *pHeavyVeh = nil;
+		static float fApplied = 1.0f;
+		static CVehicle *pLastRaw = nil; // copia sin referencia, por si el juego anula pHeavyVeh
+		CVehicle *cur = (InVehicle() && m_pMyVehicle && m_pMyVehicle->IsCar()) ? m_pMyVehicle : nil;
+		float want = Clamp(gfPlayerMassMultiplier, 0.1f, 20.0f);
+		if (m_nPedState == PED_DEAD || m_nPedState == PED_DIE)
+			cur = nil;
+		// El juego a veces anula las referencias al auto del jugador (al morir o
+		// ser arrestado). Si es el mismo auto, ya esta escalado: solo re-registrar.
+		if (pHeavyVeh == nil && cur && cur == pLastRaw && fApplied != 1.0f) {
+			pHeavyVeh = cur;
+			cur->RegisterReference((CEntity**)&pHeavyVeh);
+		} else if (pHeavyVeh == nil)
+			fApplied = 1.0f;
+		pLastRaw = cur;
+		if (pHeavyVeh != cur || (cur && fApplied != want)) {
+			CVehicle *old = pHeavyVeh;
+			if (old) {
+				old->m_fMass /= fApplied;
+				old->m_fTurnMass /= fApplied;
+				old->m_fBuoyancy /= fApplied;
+			}
+			pHeavyVeh = cur;
+			if (old && old != cur)
+				old->PruneReferences(); // soltar la referencia al auto anterior
+			fApplied = 1.0f;
+			if (cur) {
+				cur->m_fMass *= want;
+				cur->m_fTurnMass *= want;
+				cur->m_fBuoyancy *= want;
+				fApplied = want;
+				if (old != cur)
+					cur->RegisterReference((CEntity**)&pHeavyVeh); // se pone en nil si el auto se borra
+			}
+		}
+	}
+
 	if (m_nMoveState != PEDMOVE_RUN && m_nMoveState != PEDMOVE_SPRINT)
 		RestoreSprintEnergy(1.0f);
 	else if (m_nMoveState == PEDMOVE_RUN)

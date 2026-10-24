@@ -500,6 +500,10 @@ float gfHealthRegenMaxPercent = 50.0f;// MaxPercent: tope de la regeneracion (10
 // incendia y explota), 0 = los autos volcados ya no se danan por estar al reves.
 bool gbFlipExplosion = false;
 
+// [Vehicles] PlayerMassMultiplier: cuantas veces mas pesado es el auto que
+// maneja el jugador (1 = original). Solo afecta los choques, no la conduccion.
+float gfPlayerMassMultiplier = 2.0f;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -607,6 +611,7 @@ bool LoadINISettings()
 	ReadIniIfExists("HealthRegen", "Delay", &gfHealthRegenDelay);
 	ReadIniIfExists("HealthRegen", "MaxPercent", &gfHealthRegenMaxPercent);
 	ReadIniIfExists("Vehicles", "FlipExplosion", &gbFlipExplosion);
+	ReadIniIfExists("Vehicles", "PlayerMassMultiplier", &gfPlayerMassMultiplier);
 
 	return true;
 }
@@ -698,6 +703,7 @@ void SaveINISettings()
 	StoreIni("HealthRegen", "Delay", gfHealthRegenDelay);
 	StoreIni("HealthRegen", "MaxPercent", gfHealthRegenMaxPercent);
 	StoreIni("Vehicles", "FlipExplosion", (uint8)gbFlipExplosion);
+	StoreIni("Vehicles", "PlayerMassMultiplier", gfPlayerMassMultiplier);
 
 	GetIniFile().write(cfg);
 }
