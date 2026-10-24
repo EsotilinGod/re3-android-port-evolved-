@@ -1581,6 +1581,38 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 	Front.x = Cos(Alpha) * Cos(Beta);
 	Front.y = Cos(Alpha) * Sin(Beta);
 	Front.z = Sin(Alpha);
+
+	// [Camera] AimZoom: camara al hombro al apuntar, estilo GTA V. Al mantener
+	// el boton de apuntar con un arma de fuego, la camara se acerca, se corre
+	// sobre el hombro derecho y baja un poco el FOV (zoom). La transicion es
+	// suave. El disparo sigue siendo exacto: Weapon.cpp calcula la mira a partir
+	// de la posicion, direccion y FOV reales de la camara.
+	{
+		extern bool gbAimZoom;
+		extern float gfAimZoomFOVPercent, gfAimZoomDistPercent, gfAimZoomShoulder;
+		static float AimBlend = 0.0f;
+		bool wantAim = false;
+		if (gbAimZoom && CamTargetEntity == FindPlayerPed() && !FindPlayerVehicle() &&
+		    !CPad::GetPad(0)->ArePlayerControlsDisabled() && CPad::GetPad(0)->GetTarget()) {
+			eWeaponType w = FindPlayerPed()->GetWeapon()->m_eWeaponType;
+			wantAim = w >= WEAPONTYPE_COLT45 && w != WEAPONTYPE_DETONATOR;
+		}
+		float target = wantAim ? 1.0f : 0.0f;
+		AimBlend += (target - AimBlend) * Min(1.0f, 0.2f * CTimer::GetTimeStep());
+		if (Abs(AimBlend - target) < 0.001f)
+			AimBlend = target;
+
+		if (AimBlend > 0.0f) {
+			// Derecha de la pantalla en el plano horizontal (Front x Z).
+			CVector Right(Front.y, -Front.x, 0.0f);
+			Right.Normalise();
+			TargetCoors += Right * (gfAimZoomShoulder * AimBlend);
+			TargetCoors.z += 0.1f * AimBlend;
+			CamDist *= 1.0f + (gfAimZoomDistPercent / 100.0f - 1.0f) * AimBlend;
+			FOV = DefaultFOV * (1.0f + (gfAimZoomFOVPercent / 100.0f - 1.0f) * AimBlend);
+		}
+	}
+
 	Source = TargetCoors - Front*CamDist;
 	m_cvecTargetCoorsForFudgeInter = TargetCoors;
 

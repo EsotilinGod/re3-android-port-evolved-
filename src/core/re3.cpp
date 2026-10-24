@@ -512,6 +512,12 @@ bool gbForceVehicleExit = true;
 // escaleras/pendientes jugando a mas de 30 FPS. 0 = fisica original.
 bool gbPlayerAntiLaunch = true;
 
+// [Camera] Camara al hombro al apuntar, estilo GTA V.
+bool gbAimZoom = true;               // Enabled
+float gfAimZoomFOVPercent = 80.0f;   // FOVPercent: 100 = sin zoom, menos = mas zoom
+float gfAimZoomDistPercent = 55.0f;  // DistancePercent: distancia de la camara al apuntar
+float gfAimZoomShoulder = 0.45f;     // Shoulder: metros hacia el hombro derecho (negativo = izquierdo)
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -622,6 +628,10 @@ bool LoadINISettings()
 	ReadIniIfExists("Vehicles", "PlayerMassMultiplier", &gfPlayerMassMultiplier);
 	ReadIniIfExists("Vehicles", "ForceExit", &gbForceVehicleExit);
 	ReadIniIfExists("Player", "AntiLaunch", &gbPlayerAntiLaunch);
+	ReadIniIfExists("Camera", "AimZoom", &gbAimZoom);
+	ReadIniIfExists("Camera", "AimZoomFOVPercent", &gfAimZoomFOVPercent);
+	ReadIniIfExists("Camera", "AimZoomDistancePercent", &gfAimZoomDistPercent);
+	ReadIniIfExists("Camera", "AimZoomShoulder", &gfAimZoomShoulder);
 
 	return true;
 }
@@ -716,6 +726,10 @@ void SaveINISettings()
 	StoreIni("Vehicles", "PlayerMassMultiplier", gfPlayerMassMultiplier);
 	StoreIni("Vehicles", "ForceExit", (uint8)gbForceVehicleExit);
 	StoreIni("Player", "AntiLaunch", (uint8)gbPlayerAntiLaunch);
+	StoreIni("Camera", "AimZoom", (uint8)gbAimZoom);
+	StoreIni("Camera", "AimZoomFOVPercent", gfAimZoomFOVPercent);
+	StoreIni("Camera", "AimZoomDistancePercent", gfAimZoomDistPercent);
+	StoreIni("Camera", "AimZoomShoulder", gfAimZoomShoulder);
 
 	GetIniFile().write(cfg);
 }
