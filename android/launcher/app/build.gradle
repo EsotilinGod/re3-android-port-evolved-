@@ -42,6 +42,17 @@ android {
         }
     }
 
+    // Llave fija en el repo: asi cada APK compilado por GitHub Actions tiene la
+    // misma firma y se puede instalar encima del anterior sin desinstalar.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.debug
