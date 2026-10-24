@@ -525,6 +525,15 @@ bool gbM16ThirdPerson = true;
 bool gbPlayerCrouch = true;
 char gsCrouchKey[8] = "X";
 
+// [Display] VSync / FPSLimit: con el "Limitador de cuadros" del menu activado,
+// el juego corre a FPSLimit sincronizado con la pantalla. VSync = 1 tambien
+// sincroniza con el limitador apagado (FPS = frecuencia de la pantalla).
+bool gbVSync = true;
+int32 gnFPSLimit = 60;
+
+// [Mouse] Smoothing: 0 = crudo, 0.5 = suave (por defecto), 0.8 = muy suave.
+float gfMouseSmoothing = 0.5f;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -642,6 +651,9 @@ bool LoadINISettings()
 	ReadIniIfExists("Weapons", "M16ThirdPerson", &gbM16ThirdPerson);
 	ReadIniIfExists("Player", "Crouch", &gbPlayerCrouch);
 	ReadIniIfExists("Player", "CrouchKey", gsCrouchKey, sizeof(gsCrouchKey));
+	ReadIniIfExists("Display", "VSync", &gbVSync);
+	ReadIniIfExists("Display", "FPSLimit", &gnFPSLimit);
+	ReadIniIfExists("Mouse", "Smoothing", &gfMouseSmoothing);
 
 	return true;
 }
@@ -743,6 +755,9 @@ void SaveINISettings()
 	StoreIni("Weapons", "M16ThirdPerson", (uint8)gbM16ThirdPerson);
 	StoreIni("Player", "Crouch", (uint8)gbPlayerCrouch);
 	StoreIni("Player", "CrouchKey", gsCrouchKey, sizeof(gsCrouchKey));
+	StoreIni("Display", "VSync", (uint8)gbVSync);
+	StoreIni("Display", "FPSLimit", gnFPSLimit);
+	StoreIni("Mouse", "Smoothing", gfMouseSmoothing);
 
 	GetIniFile().write(cfg);
 }

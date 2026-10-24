@@ -1,0 +1,29 @@
+diff --git a/src/gl/gl3device.cpp b/src/gl/gl3device.cpp
+index d5eacc8..fa8014b 100644
+--- a/src/gl/gl3device.cpp
++++ b/src/gl/gl3device.cpp
+@@ -1406,10 +1406,20 @@ showRaster(Raster *raster, uint32 flags)
+ //		raster->width, raster->height);
+ 
+ #ifdef LIBRW_SDL2
+-	if(flags & Raster::FLIPWAITVSYNCH)
+-		SDL_GL_SetSwapInterval(1);
+-	else
+-		SDL_GL_SetSwapInterval(0);
++	// re3 Android: intervalo de vsync configurable (1 = cada refresco, 2 = uno
++	// de cada dos, ej. 60 FPS en pantalla de 120 Hz) y solo se cambia cuando
++	// hace falta: llamar eglSwapInterval en cada cuadro causa tirones en
++	// algunos drivers.
++	{
++		extern int gLibrwSwapInterval;
++		static int lastInterval = -1;
++		int interval = (flags & Raster::FLIPWAITVSYNCH) ? (gLibrwSwapInterval > 0 ? gLibrwSwapInterval : 1) : 0;
++		if(interval != lastInterval){
++			if(SDL_GL_SetSwapInterval(interval) != 0 && interval > 1)
++				SDL_GL_SetSwapInterval(1);
++			lastInterval = interval;
++		}
++	}
+ 	SDL_GL_SwapWindow(glGlobals.window);
+ #else
+ 	if(flags & Raster::FLIPWAITVSYNCH)

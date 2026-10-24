@@ -651,8 +651,31 @@ void CPad::UpdateMouse()
 
 		PCTempMouseControllerState.Clear();
 
-		PCTempMouseControllerState.x = (float)(signX * dx);
-		PCTempMouseControllerState.y = (float)(signy * dy);
+		// [Mouse] Smoothing: suavizado exponencial del movimiento. Los reportes
+		// del raton (USB/scrcpy) no llegan alineados con los cuadros: unos
+		// cuadros traen 2 lecturas y otros 3, y la camara "tironea". El filtro
+		// reparte el movimiento sin perder nada (el total recorrido es el mismo)
+		// y es independiente de los FPS. En menus no se aplica.
+		float fx = (float)(signX * dx);
+		float fy = (float)(signy * dy);
+		{
+			extern float gfMouseSmoothing;
+			static float sx = 0.0f, sy = 0.0f;
+			float k = Clamp(gfMouseSmoothing, 0.0f, 0.9f);
+			if (k > 0.0f && !FrontEndMenuManager.m_bMenuActive) {
+				// k es el factor a 60 FPS; se ajusta al tiempo real del cuadro.
+				float a = Pow(k, CTimer::GetTimeStep() * (60.0f / 50.0f));
+				sx = sx * a + fx * (1.0f - a);
+				sy = sy * a + fy * (1.0f - a);
+				fx = sx;
+				fy = sy;
+			} else {
+				sx = sy = 0.0f;
+			}
+		}
+
+		PCTempMouseControllerState.x = fx;
+		PCTempMouseControllerState.y = fy;
 		PCTempMouseControllerState.LMB = !!(buttons & SDL_BUTTON(SDL_BUTTON_LEFT));
 		PCTempMouseControllerState.RMB = !!(buttons & SDL_BUTTON(SDL_BUTTON_RIGHT));
 		PCTempMouseControllerState.MMB = !!(buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE));

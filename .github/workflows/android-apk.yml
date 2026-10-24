@@ -13,6 +13,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Parchar librw (vsync)
+        run: git -C vendor/librw apply ../../android/patches/librw-vsync.patch
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

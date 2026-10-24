@@ -140,16 +140,52 @@ psCameraBeginUpdate(RwCamera *camera)
 /*
  *****************************************************************************
  */
+// Intervalo de vsync que usa librw (ver android/patches/librw-vsync.patch).
+int gLibrwSwapInterval = 1;
+
+// Frecuencia de la pantalla (60/90/120 Hz...), consultada cada ~2 s.
+static int
+GetDisplayRefreshRate(void)
+{
+    static int cached = 60;
+    static double lastCheck = -10000.0;
+    double now = psTimer();
+    if (now - lastCheck > 2000.0) {
+        SDL_DisplayMode mode;
+        if (SDL_GetWindowDisplayMode(PSGLOBAL(window), &mode) == 0 && mode.refresh_rate > 0)
+            cached = mode.refresh_rate;
+        lastCheck = now;
+    }
+    return cached;
+}
+
+// [Display] Ritmo de cuadros: con el limitador del menu activado se usa vsync
+// y el limite de FPSLimit. Si la pantalla es multiplo exacto del limite (120 Hz
+// y 60 FPS), el vsync marca el ritmo exacto (intervalo 2) en vez del
+// temporizador, que es lo que da la sensacion mas suave.
+extern bool gbVSync;
+extern int32 gnFPSLimit;
+
+static int
+GetWantedSwapInterval(bool limiter)
+{
+    if (!limiter || gnFPSLimit <= 0)
+        return 1;
+    float ratio = (float)GetDisplayRefreshRate() / (float)gnFPSLimit;
+    int n = (int)(ratio + 0.5f);
+    if (n >= 1 && Abs(ratio - n) < 0.1f)
+        return n;
+    return 1;
+}
+
 void
 psCameraShowRaster(RwCamera *camera)
 {
-#ifdef LEGACY_MENU_OPTIONS
-    if (FrontEndMenuManager.m_PrefsVsync || FrontEndMenuManager.m_bMenuActive)
-#else
-        if (FrontEndMenuManager.m_PrefsFrameLimiter || FrontEndMenuManager.m_bMenuActive)
-#endif
+    bool limiter = FrontEndMenuManager.m_PrefsFrameLimiter || FrontEndMenuManager.m_bMenuActive;
+    if (limiter || gbVSync) {
+        gLibrwSwapInterval = GetWantedSwapInterval(FrontEndMenuManager.m_PrefsFrameLimiter && !FrontEndMenuManager.m_bMenuActive);
         RwCameraShowRaster(camera, PSGLOBAL(window), rwRASTERFLIPWAITVSYNC);
-    else
+    } else
         RwCameraShowRaster(camera, PSGLOBAL(window), rwRASTERFLIPDONTWAIT);
 
     return;
@@ -1798,11 +1834,28 @@ main(int argc, char *argv[])
 
                     case GS_PLAYING_GAME:
                     {
-                        float ms = (float)CTimer::GetCurrentTimeInCycles() / (float)CTimer::GetCyclesPerMillisecond();
+                        // Antes: el tiempo se truncaba a milisegundos enteros, asi que
+                        // con limite 60 se esperaba hasta 17 ms (58,8 FPS) y cada tanto
+                        // se perdia un refresco de pantalla: tirones. Ahora se mide con
+                        // precision de submilisegundo y, mientras se espera, se duerme
+                        // en vez de girar en vacio (menos bateria y calor).
+                        extern double oldPcTimer;
+                        double ms = psTimer() - oldPcTimer;
                         if ( RwInitialised )
                         {
-                            if (!FrontEndMenuManager.m_PrefsFrameLimiter || (1000.0f / (float)RsGlobal.maxFPS) < ms)
+                            if (!FrontEndMenuManager.m_PrefsFrameLimiter || gnFPSLimit <= 0) {
                                 RsEventHandler(rsIDLE, (void *)TRUE);
+                            } else {
+                                double period = 1000.0 / (double)gnFPSLimit;
+                                // Si el vsync ya marca el ritmo, dejar margen para que
+                                // la espera la haga el vsync y no el temporizador.
+                                if (GetWantedSwapInterval(true) > 1 || (gbVSync && gnFPSLimit >= GetDisplayRefreshRate()))
+                                    period -= 3.0;
+                                if (ms >= period)
+                                    RsEventHandler(rsIDLE, (void *)TRUE);
+                                else if (period - ms > 2.0)
+                                    SDL_Delay(1);
+                            }
                         }
                         break;
                     }
