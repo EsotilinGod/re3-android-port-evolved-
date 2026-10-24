@@ -141,7 +141,10 @@ CPlayerInfo::Process(void)
 						// This condition will always return true, else block was probably WIP Miami code.
 						if (veh->m_vehType != VEHICLE_TYPE_BIKE || veh->m_nDoorLock == CARLOCK_LOCKED_PLAYER_INSIDE) {
 							if (veh->GetStatus() != STATUS_WRECKED && veh->GetStatus() != STATUS_TRAIN_MOVING && veh->m_nDoorLock != CARLOCK_LOCKED_PLAYER_INSIDE) {
-								if (veh->m_vecMoveSpeed.Magnitude() < 0.17f && CTimer::GetTimeScale() >= 0.5f && !veh->bIsInWater) {
+								// [Vehicles] ForceExit: bajarse del auto aunque vaya en movimiento.
+								extern bool gbForceVehicleExit;
+								bool forceExit = gbForceVehicleExit && veh->IsCar();
+								if ((forceExit || veh->m_vecMoveSpeed.Magnitude() < 0.17f) && CTimer::GetTimeScale() >= 0.5f && !veh->bIsInWater) {
 									m_pPed->SetObjective(OBJECTIVE_LEAVE_CAR, veh);
 								}
 							}

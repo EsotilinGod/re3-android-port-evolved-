@@ -504,6 +504,10 @@ bool gbFlipExplosion = false;
 // maneja el jugador (1 = original). Solo afecta los choques, no la conduccion.
 float gfPlayerMassMultiplier = 2.0f;
 
+// [Vehicles] ForceExit: 1 = el jugador puede bajarse del auto en cualquier
+// momento, aunque vaya rapido (sin animacion de salto). 0 = original.
+bool gbForceVehicleExit = true;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -612,6 +616,7 @@ bool LoadINISettings()
 	ReadIniIfExists("HealthRegen", "MaxPercent", &gfHealthRegenMaxPercent);
 	ReadIniIfExists("Vehicles", "FlipExplosion", &gbFlipExplosion);
 	ReadIniIfExists("Vehicles", "PlayerMassMultiplier", &gfPlayerMassMultiplier);
+	ReadIniIfExists("Vehicles", "ForceExit", &gbForceVehicleExit);
 
 	return true;
 }
@@ -704,6 +709,7 @@ void SaveINISettings()
 	StoreIni("HealthRegen", "MaxPercent", gfHealthRegenMaxPercent);
 	StoreIni("Vehicles", "FlipExplosion", (uint8)gbFlipExplosion);
 	StoreIni("Vehicles", "PlayerMassMultiplier", gfPlayerMassMultiplier);
+	StoreIni("Vehicles", "ForceExit", (uint8)gbForceVehicleExit);
 
 	GetIniFile().write(cfg);
 }

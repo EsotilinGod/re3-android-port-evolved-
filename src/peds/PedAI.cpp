@@ -3754,7 +3754,10 @@ CPed::SetExitCar(CVehicle *veh, uint32 wantedDoorNode)
 	uint32 optedDoorNode = wantedDoorNode;
 	bool teleportNeeded = false;
 	bool isLow = !!veh->bLowVehicle;
-	if (!veh->CanPedExitCar()) {
+	// [Vehicles] ForceExit: el jugador se baja de un auto aunque este en movimiento.
+	extern bool gbForceVehicleExit;
+	bool forceExit = gbForceVehicleExit && IsPlayer() && veh->IsCar();
+	if (!forceExit && !veh->CanPedExitCar()) {
 		if (veh->pDriver && !veh->pDriver->IsPlayer()) {
 			veh->AutoPilot.m_nCruiseSpeed = 0;
 			veh->AutoPilot.m_nCarMission = MISSION_NONE;
