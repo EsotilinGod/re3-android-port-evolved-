@@ -567,6 +567,13 @@ float gfGamepadAimSpeed = 85.0f;   // grados/s apuntando
 float gfGamepadDeadzone = 0.12f;   // zona muerta (0..0.5)
 float gfGamepadCurve = 2.0f;       // 1 = lineal, 2 = mas fino al centro
 
+// [Gamepad] Botones del mando para recargar, agacharse y primera persona.
+// Valores: A B X Y LB RB BACK L3 R3 DPADUP DPADDOWN DPADLEFT DPADRIGHT NONE
+char gsPadReloadBtn[16] = "DPADDOWN";
+char gsPadCrouchBtn[16] = "L3";
+char gsPadFirstPersonBtn[16] = "DPADUP";
+bool gbPadReloadJustDown = false, gbPadCrouchJustDown = false, gbPadFirstPersonJustDown = false;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -702,6 +709,9 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "GamepadAimSpeed", &gfGamepadAimSpeed);
 	ReadIniIfExists("Camera", "GamepadDeadzone", &gfGamepadDeadzone);
 	ReadIniIfExists("Camera", "GamepadCurve", &gfGamepadCurve);
+	ReadIniIfExists("Gamepad", "Reload", gsPadReloadBtn, sizeof(gsPadReloadBtn));
+	ReadIniIfExists("Gamepad", "Crouch", gsPadCrouchBtn, sizeof(gsPadCrouchBtn));
+	ReadIniIfExists("Gamepad", "FirstPerson", gsPadFirstPersonBtn, sizeof(gsPadFirstPersonBtn));
 
 	return true;
 }
@@ -821,6 +831,9 @@ void SaveINISettings()
 	StoreIni("Camera", "GamepadAimSpeed", gfGamepadAimSpeed);
 	StoreIni("Camera", "GamepadDeadzone", gfGamepadDeadzone);
 	StoreIni("Camera", "GamepadCurve", gfGamepadCurve);
+	StoreIni("Gamepad", "Reload", gsPadReloadBtn, sizeof(gsPadReloadBtn));
+	StoreIni("Gamepad", "Crouch", gsPadCrouchBtn, sizeof(gsPadCrouchBtn));
+	StoreIni("Gamepad", "FirstPerson", gsPadFirstPersonBtn, sizeof(gsPadFirstPersonBtn));
 
 	GetIniFile().write(cfg);
 }

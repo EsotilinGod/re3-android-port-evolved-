@@ -31,6 +31,8 @@ long _dwOperatingSystemVersion;
 #include "AnimViewer.h"
 #include "Font.h"
 #include "MemoryMgr.h"
+#include "World.h"
+#include "PlayerPed.h"
 
 #if defined ANDROID
 #include <jni.h>
@@ -2164,8 +2166,11 @@ void CapturePad(RwInt32 padID)
     // touch controls instead. If a real gamepad *is* connected, prefer it
     // and let the normal path below handle it.
     if (gamepad == nullptr) {
-        if (padID == 0)
+        if (padID == 0) {
+            extern bool gbPadReloadJustDown, gbPadCrouchJustDown, gbPadFirstPersonJustDown;
+            gbPadReloadJustDown = gbPadCrouchJustDown = gbPadFirstPersonJustDown = false;
             CaptureTouchPad(padID);
+        }
         return;
     }
 #endif
@@ -2213,6 +2218,47 @@ void CapturePad(RwInt32 padID)
             ControlsManager.m_NewState.mappedButtons[gameBtn] = !!state;
     }
     ControlsManager.m_NewState.buttons = sdlButtonStates;
+
+#if defined ANDROID
+    // Botones del mando para las funciones nuevas (recargar, agacharse,
+    // primera persona). Configurables en re3.ini [Gamepad]. Si se asigna una
+    // flecha de la cruceta, a pie deja de mover al personaje (a pie la cruceta
+    // solo duplica el stick izquierdo); en menus y vehiculos sigue normal.
+    if (padID == 0) {
+        extern char gsPadReloadBtn[16], gsPadCrouchBtn[16], gsPadFirstPersonBtn[16];
+        extern bool gbPadReloadJustDown, gbPadCrouchJustDown, gbPadFirstPersonJustDown;
+        static bool prevReload = false, prevCrouch = false, prevFP = false;
+        bool onFoot = !FrontEndMenuManager.m_bMenuActive && FindPlayerPed() && !FindPlayerPed()->bInVehicle;
+
+        struct { const char *name; int sdl; int game; } kNames[] = {
+            {"A", SDL_CONTROLLER_BUTTON_A, -1}, {"B", SDL_CONTROLLER_BUTTON_B, -1},
+            {"X", SDL_CONTROLLER_BUTTON_X, -1}, {"Y", SDL_CONTROLLER_BUTTON_Y, -1},
+            {"LB", SDL_CONTROLLER_BUTTON_LEFTSHOULDER, -1}, {"RB", SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, -1},
+            {"BACK", SDL_CONTROLLER_BUTTON_BACK, -1},
+            {"L3", SDL_CONTROLLER_BUTTON_LEFTSTICK, -1}, {"R3", SDL_CONTROLLER_BUTTON_RIGHTSTICK, -1},
+            {"DPADUP", SDL_CONTROLLER_BUTTON_DPAD_UP, GAME_BTN_DPAD_UP},
+            {"DPADDOWN", SDL_CONTROLLER_BUTTON_DPAD_DOWN, GAME_BTN_DPAD_DOWN},
+            {"DPADLEFT", SDL_CONTROLLER_BUTTON_DPAD_LEFT, GAME_BTN_DPAD_LEFT},
+            {"DPADRIGHT", SDL_CONTROLLER_BUTTON_DPAD_RIGHT, GAME_BTN_DPAD_RIGHT},
+        };
+        auto readBtn = [&](const char *cfg) -> bool {
+            for (auto &n : kNames) {
+                if (strcasecmp(cfg, n.name) == 0) {
+                    bool down = SDL_GameControllerGetButton(gamepad, (SDL_GameControllerButton)n.sdl) != 0;
+                    if (onFoot && n.game >= 0)
+                        ControlsManager.m_NewState.mappedButtons[n.game] = 0;
+                    return down;
+                }
+            }
+            return false; // "NONE" o nombre desconocido
+        };
+        bool r = readBtn(gsPadReloadBtn), c = readBtn(gsPadCrouchBtn), f = readBtn(gsPadFirstPersonBtn);
+        gbPadReloadJustDown = r && !prevReload;
+        gbPadCrouchJustDown = c && !prevCrouch;
+        gbPadFirstPersonJustDown = f && !prevFP;
+        prevReload = r; prevCrouch = c; prevFP = f;
+    }
+#endif
 
     ControlsManager.m_NewState.numButtons = SDL_CONTROLLER_BUTTON_DPAD_RIGHT + 1;
     ControlsManager.m_NewState.id = joyId;

@@ -1508,7 +1508,8 @@ CPlayerPed::ProcessControl(void)
 			CWeapon *weapon = GetWeapon();
 			CWeaponInfo *info = CWeaponInfo::GetWeaponInfo(weapon->m_eWeaponType);
 			int32 fullClip = Min(info->m_nAmountofAmmunition, weapon->m_nAmmoTotal);
-			if (key > 0 && padUsed->GetCharJustDown(key) &&
+			extern bool gbPadReloadJustDown;
+			if ((key > 0 && padUsed->GetCharJustDown(key) || gbPadReloadJustDown) &&
 			    info->m_eWeaponFire == WEAPON_FIRE_INSTANT_HIT && info->m_nAmountofAmmunition > 1 &&
 			    weapon->m_nAmmoInClip < fullClip &&
 			    (weapon->m_eWeaponState == WEAPONSTATE_READY || weapon->m_eWeaponState == WEAPONSTATE_FIRING)) {
@@ -1538,7 +1539,8 @@ CPlayerPed::ProcessControl(void)
 			int key = gsFirstPersonKey[0];
 			if (key >= 'a' && key <= 'z')
 				key -= 'a' - 'A';
-			if (key > 0 && padUsed->GetCharJustDown(key) && !bInVehicle) {
+			extern bool gbPadFirstPersonJustDown;
+			if ((key > 0 && padUsed->GetCharJustDown(key) || gbPadFirstPersonJustDown) && !bInVehicle) {
 				gbFirstPersonOn = !gbFirstPersonOn;
 				TheCamera.ClearPlayerWeaponMode();
 			}
@@ -1560,7 +1562,8 @@ CPlayerPed::ProcessControl(void)
 				key -= 'a' - 'A';
 			if (key > 0 && padUsed->GetCharJustDown(key))
 				togglePressed = true;
-			if (padUsed->NewState.LeftShock && !padUsed->OldState.LeftShock)
+			extern bool gbPadCrouchJustDown;
+			if (gbPadCrouchJustDown)
 				togglePressed = true;
 		}
 		bool canCrouch = gbPlayerCrouch && !bInVehicle && !bIsInTheAir && !bIsLanding && !bIsInWater &&
