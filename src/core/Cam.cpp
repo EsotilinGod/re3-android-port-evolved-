@@ -1583,7 +1583,9 @@ GamepadAimAssistV(CCam *cam, float &Alpha, float &Beta, bool centered)
 
 		CPlayerPed *player = FindPlayerPed();
 		bool aiming = false;
-		if(gbGamepadAimV && IsPhysicalGamepadActive() && player && cam->CamTargetEntity == player &&
+		extern bool gbKbmActive, gbMouseAimAssist;
+		bool inputOk = IsPhysicalGamepadActive() || gbKbmActive && gbMouseAimAssist;
+		if(gbGamepadAimV && inputOk && player && cam->CamTargetEntity == player &&
 		   !FindPlayerVehicle() && !CPad::GetPad(0)->ArePlayerControlsDisabled() && CPad::GetPad(0)->GetTarget()){
 			eWeaponType w = player->GetWeapon()->m_eWeaponType;
 			aiming = w >= WEAPONTYPE_COLT45 && w != WEAPONTYPE_DETONATOR &&
@@ -3149,12 +3151,17 @@ CCam::Process_1rstPersonPedOnPC(const CVector&, float TargetOrientation, float, 
 #ifdef GTA_PC_CONTROLS
 		if(UseMouse){
 #if defined ANDROID
-			float aimMult = Mode == MODE_1STPERSON_RUNABOUT ? MouseAimSensMult() : 1.0f;
+			extern float gfGamepadAimStickMult;
+			float aimMult = Mode == MODE_1STPERSON_RUNABOUT ? MouseAimSensMult() * gfGamepadAimStickMult : 1.0f;
 #else
 			float aimMult = 1.0f;
 #endif
 			Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV/80.0f * aimMult;
 			Alpha += TheCamera.m_fMouseAccelVertical * LookUpDown * FOV/80.0f * aimMult;
+#if defined ANDROID
+			if(Mode == MODE_1STPERSON_RUNABOUT)
+				GamepadAimAssistV(this, Alpha, Beta, true);
+#endif
 		}else
 #endif
 #if defined ANDROID
@@ -4948,7 +4955,8 @@ CCam::Process_FollowPed_Rotation(const CVector &CameraTarget, float TargetOrient
 		BetaOffset = LookLeftRight * TheCamera.m_fMouseAccelHorzntl * FOV/80.0f;
 		AlphaOffset = LookUpDown * TheCamera.m_fMouseAccelVertical * FOV/80.0f;
 #if defined ANDROID
-		float aimMult = MouseAimSensMult();
+		extern float gfGamepadAimStickMult;
+		float aimMult = MouseAimSensMult() * gfGamepadAimStickMult; // + friccion
 		BetaOffset *= aimMult;
 		AlphaOffset *= aimMult;
 #endif

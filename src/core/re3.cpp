@@ -535,6 +535,9 @@ int32 gnFPSLimit = 60;
 float gfMouseSmoothing = 0.5f;
 // [Mouse] AimSensitivity: multiplicador de sensibilidad al apuntar (1 = igual).
 float gfMouseAimSensitivity = 0.6f;
+// [Mouse] AimAssist: 1 = la misma asistencia que el mando (friccion, y el salto
+// si GamepadAimAssist = 2) tambien con raton.
+bool gbMouseAimAssist = true;
 
 // [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
 // la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
@@ -701,6 +704,7 @@ bool LoadINISettings()
 	ReadIniIfExists("Display", "FPSLimit", &gnFPSLimit);
 	ReadIniIfExists("Mouse", "Smoothing", &gfMouseSmoothing);
 	ReadIniIfExists("Mouse", "AimSensitivity", &gfMouseAimSensitivity);
+	ReadIniIfExists("Mouse", "AimAssist", &gbMouseAimAssist);
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
@@ -826,6 +830,7 @@ void SaveINISettings()
 	StoreIni("Display", "FPSLimit", gnFPSLimit);
 	StoreIni("Mouse", "Smoothing", gfMouseSmoothing);
 	StoreIni("Mouse", "AimSensitivity", gfMouseAimSensitivity);
+	StoreIni("Mouse", "AimAssist", (uint8)gbMouseAimAssist);
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
