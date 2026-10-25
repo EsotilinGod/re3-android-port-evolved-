@@ -645,9 +645,67 @@ bool CFont::IsAnsiCharacter(wchar *s)
 }
 #endif
 
+#if defined ANDROID
+// [HUD] TextOutline: el HUD de GTA III dibuja cada texto dos veces: primero en
+// negro corrido 2 px (la sombra) y luego en color. Con el contorno activado,
+// la impresion en negro se guarda y, cuando llega la misma cadena en color, se
+// dibuja un contorno negro alrededor (8 direcciones) en su posicion exacta.
+bool gbHudOutlineActive = false;
+static bool sOutlineDrawing = false;
+static int sNumPending = 0;
+static struct { wchar str[128]; uint8 alpha; } sPending[6];
+
+void
+HudOutlineEnd(void)
+{
+	gbHudOutlineActive = false;
+	sNumPending = 0;
+}
+
+static bool
+HudOutlineSameStr(const wchar *a, const wchar *b)
+{
+	for (int i = 0; i < 127; i++) {
+		if (a[i] != b[i]) return false;
+		if (a[i] == 0) return true;
+	}
+	return true;
+}
+#endif
+
 void
 CFont::PrintString(float xstart, float ystart, wchar *s)
 {
+#if defined ANDROID
+	if (gbHudOutlineActive && !sOutlineDrawing && s) {
+		CRGBA col = Details.color;
+		if (col.r == 0 && col.g == 0 && col.b == 0) {
+			if (col.a > 0 && sNumPending < ARRAY_SIZE(sPending)) {
+				int i = 0;
+				for (; i < 127 && s[i]; i++) sPending[sNumPending].str[i] = s[i];
+				sPending[sNumPending].str[i] = 0;
+				sPending[sNumPending].alpha = col.a;
+				sNumPending++;
+			}
+			return; // la sombra se reemplaza por el contorno
+		}
+		for (int p = 0; p < sNumPending; p++) {
+			if (!HudOutlineSameStr(sPending[p].str, s))
+				continue;
+			extern float gfHudOutlineSize;
+			float ox = SCREEN_SCALE_X(gfHudOutlineSize), oy = SCREEN_SCALE_Y(gfHudOutlineSize);
+			static const float dirs[8][2] = { {1,0},{-1,0},{0,1},{0,-1},{0.7f,0.7f},{-0.7f,0.7f},{0.7f,-0.7f},{-0.7f,-0.7f} };
+			sOutlineDrawing = true;
+			SetColor(CRGBA(0, 0, 0, sPending[p].alpha));
+			for (int d = 0; d < 8; d++)
+				PrintString(xstart + dirs[d][0]*ox, ystart + dirs[d][1]*oy, s);
+			SetColor(col);
+			sOutlineDrawing = false;
+			sPending[p] = sPending[--sNumPending];
+			break;
+		}
+	}
+#endif
 	CRect rect;
 	int numSpaces;
 	float lineLength;

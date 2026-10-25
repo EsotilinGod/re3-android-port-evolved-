@@ -323,6 +323,14 @@ void CHud::SetVehicleName(wchar *name)
 
 void CHud::Draw()
 {
+#if defined ANDROID
+	extern bool gbHudOutlineActive, gbHudOutline;
+	extern void HudOutlineEnd(void);
+	struct OutlineGuard {
+		OutlineGuard() { gbHudOutlineActive = gbHudOutline; }
+		~OutlineGuard() { HudOutlineEnd(); }
+	} outlineGuard;
+#endif
 	// disable hud via second controller
 	if (CPad::GetPad(1)->GetStartJustDown())
 		m_Wants_To_Draw_Hud = !m_Wants_To_Draw_Hud;
@@ -1065,7 +1073,12 @@ void CHud::Draw()
 #if defined ANDROID
 			// Top-left instead of bottom-left -- the movement stick (touch
 			// controls) sits bottom-left and would otherwise overlap the radar.
-			rect.Translate(SCREEN_SCALE_X_FIX(RADAR_LEFT), SCREEN_SCALE_Y(RADAR_TOP));
+			// Con mando o teclado/raton vuelve abajo (ver RadarUseTop()).
+			extern bool RadarUseTop(void);
+			if (RadarUseTop())
+				rect.Translate(SCREEN_SCALE_X_FIX(RADAR_LEFT), SCREEN_SCALE_Y(RADAR_TOP));
+			else
+				rect.Translate(SCREEN_SCALE_X_FIX(RADAR_LEFT), SCREEN_SCALE_FROM_BOTTOM(RADAR_BOTTOM + RADAR_HEIGHT));
 #else
 			rect.Translate(SCREEN_SCALE_X_FIX(RADAR_LEFT), SCREEN_SCALE_FROM_BOTTOM(RADAR_BOTTOM + RADAR_HEIGHT));
 #endif
@@ -1325,6 +1338,14 @@ void CHud::Draw()
 
 void CHud::DrawAfterFade()
 {
+#if defined ANDROID
+	extern bool gbHudOutlineActive, gbHudOutline;
+	extern void HudOutlineEnd(void);
+	struct OutlineGuard {
+		OutlineGuard() { gbHudOutlineActive = gbHudOutline; }
+		~OutlineGuard() { HudOutlineEnd(); }
+	} outlineGuard;
+#endif
 	if (CTimer::GetIsUserPaused() || CReplay::IsPlayingBack())
 		return;
 

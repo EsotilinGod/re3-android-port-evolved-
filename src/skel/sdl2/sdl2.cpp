@@ -2015,6 +2015,22 @@ Java_com_re3_game_TouchControlsView_nativeIsControllerConnected(JNIEnv *env, job
     return gamepad1 != nullptr || gbKbmActive;
 }
 
+// Controles tactiles en pantalla (sin mando ni teclado/raton).
+bool AreTouchControlsVisible(void)
+{
+    return gamepad1 == nullptr && !gbKbmActive;
+}
+
+// [HUD] RadarPosition: 0 = automatico (arriba solo con controles tactiles),
+// 1 = siempre arriba, 2 = siempre abajo (como el GTA III original).
+bool RadarUseTop(void)
+{
+    extern int32 gnRadarPosition;
+    if (gnRadarPosition == 1) return true;
+    if (gnRadarPosition == 2) return false;
+    return AreTouchControlsVisible();
+}
+
 // Mando fisico manejando el juego (no teclado/raton, no tactil).
 bool IsPhysicalGamepadActive(void)
 {

@@ -539,6 +539,13 @@ float gfMouseAimSensitivity = 0.6f;
 // si GamepadAimAssist = 2) tambien con raton.
 bool gbMouseAimAssist = true;
 
+// [HUD] TextOutline: contorno negro alrededor de los textos del HUD en vez de
+// la sombra corrida. TextOutlineSize: grosor.
+bool gbHudOutline = true;
+float gfHudOutlineSize = 1.2f;
+// [HUD] RadarPosition: 0 = automatico, 1 = arriba, 2 = abajo.
+int32 gnRadarPosition = 0;
+
 // [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
 // la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
 bool gbFirstPersonOption = true;
@@ -705,6 +712,9 @@ bool LoadINISettings()
 	ReadIniIfExists("Mouse", "Smoothing", &gfMouseSmoothing);
 	ReadIniIfExists("Mouse", "AimSensitivity", &gfMouseAimSensitivity);
 	ReadIniIfExists("Mouse", "AimAssist", &gbMouseAimAssist);
+	ReadIniIfExists("HUD", "TextOutline", &gbHudOutline);
+	ReadIniIfExists("HUD", "TextOutlineSize", &gfHudOutlineSize);
+	ReadIniIfExists("HUD", "RadarPosition", &gnRadarPosition);
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
@@ -831,6 +841,9 @@ void SaveINISettings()
 	StoreIni("Mouse", "Smoothing", gfMouseSmoothing);
 	StoreIni("Mouse", "AimSensitivity", gfMouseAimSensitivity);
 	StoreIni("Mouse", "AimAssist", (uint8)gbMouseAimAssist);
+	StoreIni("HUD", "TextOutline", (uint8)gbHudOutline);
+	StoreIni("HUD", "TextOutlineSize", gfHudOutlineSize);
+	StoreIni("HUD", "RadarPosition", gnRadarPosition);
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
