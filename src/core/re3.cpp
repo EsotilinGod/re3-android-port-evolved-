@@ -546,6 +546,11 @@ float gfHudOutlineSize = 1.2f;
 // [HUD] RadarPosition: 0 = automatico, 1 = arriba, 2 = abajo.
 int32 gnRadarPosition = 0;
 
+// [Particles] Density: cantidad de humo/polvo/vapor (1 = como a 30 FPS).
+// MaxScreenSize: tamano maximo en pantalla de un humo (fraccion del alto).
+float gfParticleDensity = 1.0f;
+float gfParticleMaxScreenSize = 0.6f;
+
 // [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
 // la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
 bool gbFirstPersonOption = true;
@@ -715,6 +720,8 @@ bool LoadINISettings()
 	ReadIniIfExists("HUD", "TextOutline", &gbHudOutline);
 	ReadIniIfExists("HUD", "TextOutlineSize", &gfHudOutlineSize);
 	ReadIniIfExists("HUD", "RadarPosition", &gnRadarPosition);
+	ReadIniIfExists("Particles", "Density", &gfParticleDensity);
+	ReadIniIfExists("Particles", "MaxScreenSize", &gfParticleMaxScreenSize);
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
@@ -844,6 +851,8 @@ void SaveINISettings()
 	StoreIni("HUD", "TextOutline", (uint8)gbHudOutline);
 	StoreIni("HUD", "TextOutlineSize", gfHudOutlineSize);
 	StoreIni("HUD", "RadarPosition", gnRadarPosition);
+	StoreIni("Particles", "Density", gfParticleDensity);
+	StoreIni("Particles", "MaxScreenSize", gfParticleMaxScreenSize);
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);

@@ -800,6 +800,74 @@ void CParticle::Shutdown()
 	debug("CParticle shut down");
 }
 
+#if defined ANDROID
+bool
+IsContinuousParticle(int type)
+{
+	switch ( type )
+	{
+	case PARTICLE_HELI_DUST:
+	case PARTICLE_ENGINE_SMOKE:
+	case PARTICLE_ENGINE_SMOKE2:
+	case PARTICLE_ENGINE_STEAM:
+	case PARTICLE_CARFLAME:
+	case PARTICLE_CARFLAME_SMOKE:
+	case PARTICLE_RUBBER_SMOKE:
+	case PARTICLE_BURNINGRUBBER_SMOKE:
+	case PARTICLE_EXHAUST_FUMES:
+	case PARTICLE_STEAM:
+	case PARTICLE_STEAM2:
+	case PARTICLE_STEAM_NY:
+	case PARTICLE_STEAM_NY_SLOWMOTION:
+	case PARTICLE_FLAME:
+	case PARTICLE_SMOKE:
+	case PARTICLE_SMOKE_SLOWMOTION:
+	case PARTICLE_FIREBALL_SMOKE:
+	case PARTICLE_PEDFOOT_DUST:
+	case PARTICLE_WHEEL_DIRT:
+	case PARTICLE_WHEEL_WATER:
+	case PARTICLE_BOAT_WAKE:
+	case PARTICLE_BOAT_THRUSTJET:
+		return true;
+	default:
+		return false;
+	}
+}
+
+// Humos y polvos: los que mas pantalla tapan cuando estan cerca de la camara.
+static bool
+IsSmokeLikeParticle(int type)
+{
+	switch ( type )
+	{
+	case PARTICLE_HELI_DUST:
+	case PARTICLE_ENGINE_SMOKE:
+	case PARTICLE_ENGINE_SMOKE2:
+	case PARTICLE_ENGINE_STEAM:
+	case PARTICLE_CARFLAME_SMOKE:
+	case PARTICLE_RUBBER_SMOKE:
+	case PARTICLE_BURNINGRUBBER_SMOKE:
+	case PARTICLE_EXHAUST_FUMES:
+	case PARTICLE_STEAM:
+	case PARTICLE_STEAM2:
+	case PARTICLE_STEAM_NY:
+	case PARTICLE_STEAM_NY_SLOWMOTION:
+	case PARTICLE_SMOKE:
+	case PARTICLE_SMOKE_SLOWMOTION:
+	case PARTICLE_FIREBALL_SMOKE:
+	case PARTICLE_PAINT_SMOKE:
+	case PARTICLE_CARCOLLISION_DUST:
+	case PARTICLE_GUNSMOKE:
+	case PARTICLE_GUNSMOKE2:
+	case PARTICLE_BULLETHIT_SMOKE:
+	case PARTICLE_PEDFOOT_DUST:
+		return true;
+	default:
+		return false;
+	}
+}
+#endif
+
 CParticle *CParticle::AddParticle(tParticleType type, CVector const &vecPos, CVector const &vecDir, CEntity *pEntity, float fSize, int32 nRotationSpeed, int32 nRotation, int32 nCurFrame, int32 nLifeSpan)
 {
 	CRGBA color(0, 0, 0, 0);
@@ -810,6 +878,21 @@ CParticle *CParticle::AddParticle(tParticleType type, CVector const &vecPos, CVe
 {
 	if ( CTimer::GetIsPaused() )
 		return NULL;
+
+#if defined ANDROID
+	// [Particles] Emisores continuos (humo, polvo del helicoptero, vapor,
+	// llamas...) crean particulas en CADA cuadro: a 60 FPS salian el doble que
+	// a 30, con el doble de transparencias superpuestas que dibujar (lo que mas
+	// cuesta en GPUs moviles). Se ajusta la cantidad al tiempo real del cuadro
+	// para que la densidad sea la de 30 FPS, y se multiplica por Density.
+	if ( IsContinuousParticle(type) )
+	{
+		extern float gfParticleDensity;
+		float keep = Min(1.0f, CTimer::GetTimeStep() / (50.0f / 30.0f)) * gfParticleDensity;
+		if ( keep < 1.0f && CGeneral::GetRandomNumberInRange(0.0f, 1.0f) > keep )
+			return nil;
+	}
+#endif
 
 #ifdef PC_PARTICLE
 	if ( ( type == PARTICLE_ENGINE_SMOKE
@@ -1613,6 +1696,15 @@ void CParticle::Render()
 
 				if ( CSprite::CalcScreenCoors(particle->m_vecPosition, &coors, &w, &h, true) )
 				{
+#if defined ANDROID
+					// [Particles] MaxScreenSize: un humo pegado a la camara cubre
+					// toda la pantalla (mucho costo, poco aporte visual): no se
+					// dibujan los humos/polvos mas grandes que esa fraccion.
+					extern float gfParticleMaxScreenSize;
+					bool tooBig = IsSmokeLikeParticle(psystem->m_Type) &&
+						particle->m_fSize * h > SCREEN_HEIGHT * gfParticleMaxScreenSize;
+					if ( !tooBig )
+#endif
 #ifdef PC_PARTICLE
 					if ( (!particleBanned || SCREEN_WIDTH * fParticleScaleLimit >= w)
 											&& SCREEN_HEIGHT * fParticleScaleLimit >= h )
