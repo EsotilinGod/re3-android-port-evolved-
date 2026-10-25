@@ -302,7 +302,7 @@ ConvertingTexturesScreen(uint32 num, uint32 count, const char *text)
 	DefinedState();
 
 	RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, (void*)rwTEXTUREADDRESSCLAMP);
-#ifndef DISABLE_LOADING_SCREEN
+#if !defined(DISABLE_LOADING_SCREEN) || defined(ANDROID) // splash propio, seguro
 	// See the matching comment in LoadingIslandScreen() (main.cpp) -- same
 	// "purely cosmetic, don't trust the cached splash sprite" reasoning.
 	splash->Draw(CRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT), CRGBA(255, 255, 255, 255));

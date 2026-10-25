@@ -576,6 +576,65 @@ Terminate3D(void)
 CSprite2d splash;
 int splashTxdId = -1;
 
+#if defined ANDROID
+// Pantallas de carga (splash) en Android: antes se guardaban en un slot de
+// CTxdStore que el sistema de streaming terminaba "adoptando" y podia borrar en
+// cualquier momento, lo que causaba cierres; por eso el port las tenia
+// desactivadas (pantalla negra al cambiar de isla, en misiones, etc.).
+// Ahora la textura vive en un diccionario propio, cargado directo del archivo
+// TXD/<nombre>.txd y fuera del streaming: nadie mas puede liberarlo.
+static RwTexDictionary *sSplashTxd = nil;
+static char sSplashName[32] = "";
+
+CSprite2d*
+LoadSplash(const char *name)
+{
+	if(name == nil)
+		return &splash;
+	if(sSplashTxd && splash.m_pTexture && strcasecmp(sSplashName, name) == 0)
+		return &splash;
+
+	char filename[140];
+	RwTexDictionary *txd = nil;
+	CFileMgr::SetDir("TXD\\");
+	sprintf(filename, "%s.txd", name);
+	RwStream *stream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMREAD, filename);
+	if(stream){
+		if(RwStreamFindChunk(stream, rwID_TEXDICTIONARY, nil, nil))
+			txd = RwTexDictionaryGtaStreamRead(stream);
+		RwStreamClose(stream, nil);
+	}
+	CFileMgr::SetDir("");
+	if(txd == nil)
+		return &splash; // no se pudo cargar: se mantiene la anterior
+
+	RwTexture *tex = RwTexDictionaryFindNamedTexture(txd, name);
+	if(tex == nil){
+		RwTexDictionaryDestroy(txd);
+		return &splash;
+	}
+
+	splash.Delete();
+	if(sSplashTxd)
+		RwTexDictionaryDestroy(sSplashTxd);
+	sSplashTxd = txd;
+	strncpy(sSplashName, name, sizeof(sSplashName) - 1);
+	sSplashName[sizeof(sSplashName) - 1] = '\0';
+	RwTextureAddRef(tex); // el sprite tiene su propia referencia
+	splash.m_pTexture = tex;
+	return &splash;
+}
+
+void
+DestroySplashScreen(void)
+{
+	splash.Delete();
+	if(sSplashTxd)
+		RwTexDictionaryDestroy(sSplashTxd);
+	sSplashTxd = nil;
+	sSplashName[0] = '\0';
+}
+#else
 CSprite2d*
 LoadSplash(const char *name)
 {
@@ -635,6 +694,8 @@ DestroySplashScreen(void)
 		CTxdStore::RemoveTxdSlot(splashTxdId);
 	splashTxdId = -1;
 }
+
+#endif
 
 Const char*
 GetRandomSplashScreen(void)
@@ -782,7 +843,7 @@ LoadingIslandScreen(const char *levelName)
 	CFont::InitPerFrame();
 	DefinedState();
 	col = CRGBA(255, 255, 255, 255);
-#ifndef DISABLE_LOADING_SCREEN
+#if !defined(DISABLE_LOADING_SCREEN) || defined(ANDROID)
 	// LoadSplash(nil) here only ever returns a *cached* sprite -- nothing
 	// on this call path names a real texture to (re)load. DISABLE_LOADING_SCREEN
 	// (on by default, see config.h) already skips priming that cache

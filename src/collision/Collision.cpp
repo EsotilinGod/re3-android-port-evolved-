@@ -259,7 +259,7 @@ CCollision::LoadCollisionWhenINeedIt(bool forceChange)
 		CReplay::EmptyReplayBuffer();
 		ISLAND_LOADING_IS(LOW)
 		{
-#ifndef DISABLE_LOADING_SCREEN
+#if !defined(DISABLE_LOADING_SCREEN) || defined(ANDROID) // splash propio, seguro
 			// Nothing draws this once DISABLE_LOADING_SCREEN is on (see
 			// LoadingIslandScreen()/ConvertingTexturesScreen(), the only
 			// places that ever draw the shared LoadSplash() sprite for a
@@ -325,7 +325,7 @@ CCollision::SortOutCollisionAfterLoad(void)
 		} else
 #endif
 		CFileLoader::LoadCollisionFromDatFile(CGame::currLevel);
-#ifndef DISABLE_LOADING_SCREEN
+#if !defined(DISABLE_LOADING_SCREEN) || defined(ANDROID) // splash propio, seguro
 		// See the matching comment above in LoadCollisionScreen()'s caller.
 		if(!CGame::playingIntro)
 			LoadSplash(GetLevelSplashScreen(CGame::currLevel));

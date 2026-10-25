@@ -121,7 +121,7 @@ CFileLoader::LoadLevel(const char *filename)
 			LoadingScreenLoadingFile(line + 8);
 			LoadMapZones(line + 8);
 		}else if(strncmp(line, "SPLASH", 6) == 0){
-#ifndef DISABLE_LOADING_SCREEN
+#if !defined(DISABLE_LOADING_SCREEN) || defined(ANDROID) // splash propio, seguro
 			LoadSplash(GetRandomSplashScreen());
 #endif
 #ifndef GTA_PS2
