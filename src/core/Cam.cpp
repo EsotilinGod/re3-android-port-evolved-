@@ -1545,6 +1545,112 @@ GamepadLookV(float &BetaOffset, float &AlphaOffset)
 }
 #endif
 
+#if defined ANDROID
+// [Camera] GamepadAimV: apuntado con mando estilo GTA V.
+	//  1) Al presionar apuntar, si hay un enemigo cerca de donde mira la camara,
+	//     la mira "salta" suavemente hacia su pecho (bloqueo blando).
+	//  2) Despues se apunta libre con el stick derecho (se puede subir a la cabeza).
+	//  3) Mientras la mira pasa sobre un enemigo, el stick se frena ("friccion")
+	//     para que sea facil quedarse encima.
+static void
+GamepadAimAssistV(CCam *cam, float &Alpha, float &Beta, bool centered)
+{
+	{
+		extern bool gbGamepadAimV;
+		extern int32 gnGamepadAimAssist;
+		extern float gfGamepadAimSnapAngle, gfGamepadAimFriction;
+		extern float gfGamepadAimStickMult;
+		extern bool IsPhysicalGamepadActive(void);
+		static bool wasAiming = false;
+		static int32 lockRef = -1;
+		static uint32 lockStart = 0;
+		float wantMult = 1.0f;
+
+		CPlayerPed *player = FindPlayerPed();
+		bool aiming = false;
+		if(gbGamepadAimV && IsPhysicalGamepadActive() && player && cam->CamTargetEntity == player &&
+		   !FindPlayerVehicle() && !CPad::GetPad(0)->ArePlayerControlsDisabled() && CPad::GetPad(0)->GetTarget()){
+			eWeaponType w = player->GetWeapon()->m_eWeaponType;
+			aiming = w >= WEAPONTYPE_COLT45 && w != WEAPONTYPE_DETONATOR &&
+			         CWeaponInfo::GetWeaponInfo(w)->m_eWeaponFire == WEAPON_FIRE_INSTANT_HIT;
+		}
+
+		if(aiming){
+			// Direccion real de la mira (la mira esta corrida del centro).
+			// (en primera persona la mira esta al centro)
+			float chX = centered ? 0.0f : DEGTORAD((TheCamera.m_f3rdPersonCHairMultX-0.5f) * 1.8f * 0.5f * cam->FOV * CDraw::GetAspectRatio());
+			float chY = centered ? 0.0f : DEGTORAD((0.5f-TheCamera.m_f3rdPersonCHairMultY) * 1.8f * 0.5f * cam->FOV);
+			float aimBeta = Beta - chX;
+			float aimAlpha = Alpha + chY;
+			CVector aimDir(Cos(aimAlpha)*Cos(aimBeta), Cos(aimAlpha)*Sin(aimBeta), Sin(aimAlpha));
+			CVector eye = cam->Source;
+			float range = Min(CWeaponInfo::GetWeaponInfo(player->GetWeapon()->m_eWeaponType)->m_fRange, 60.0f);
+
+			// Busca el enemigo con menor angulo respecto de la mira.
+			CPed *best = nil;
+			float bestAngle = DEGTORAD(gfGamepadAimSnapAngle);
+			float minAngle = PI;
+			for(int i = CPools::GetPedPool()->GetSize()-1; i >= 0; i--){
+				CPed *ped = CPools::GetPedPool()->GetSlot(i);
+				if(!ped || ped == player || ped->DyingOrDead() || ped->bInVehicle)
+					continue;
+				CVector chest = ped->GetPosition();
+				chest.z += 0.3f;
+				CVector toPed = chest - eye;
+				float dist = toPed.Magnitude();
+				if(dist < 1.0f || dist > range + 8.0f)
+					continue;
+				toPed *= 1.0f/dist;
+				float cosA = DotProduct(toPed, aimDir);
+				if(cosA < 0.0f)
+					continue;
+				float ang = Acos(Min(cosA, 1.0f));
+				// la friccion se mide en tamano angular: un blanco lejano es mas chico
+				float angSize = ang * Max(1.0f, dist / 15.0f);
+				if(angSize < minAngle)
+					minAngle = angSize;
+				if(ang < bestAngle && CWorld::GetIsLineOfSightClear(eye, chest, true, true, false, true, false, false, false)){
+					bestAngle = ang;
+					best = ped;
+				}
+			}
+
+			if(!wasAiming){
+				// Solo con asistencia 2 hay bloqueo blando al apuntar.
+				lockRef = (best && gnGamepadAimAssist >= 2) ? CPools::GetPedRef(best) : -1;
+				lockStart = CTimer::GetTimeInMilliseconds();
+			}
+
+			// Bloqueo blando: ~0,2 s llevando la mira al pecho del objetivo.
+			CPed *lockPed = lockRef >= 0 ? CPools::GetPed(lockRef) : nil;
+			if(lockPed && !lockPed->DyingOrDead() && CTimer::GetTimeInMilliseconds() - lockStart < 260){
+				CVector chest = lockPed->GetPosition();
+				chest.z += 0.3f;
+				CVector d = chest - eye;
+				float wantBeta = CGeneral::GetATanOfXY(d.x, d.y) + chX;
+				float wantAlpha = CGeneral::GetATanOfXY(d.Magnitude2D(), d.z) - chY;
+				float dB = wantBeta - Beta;
+				while(dB >= PI) dB -= 2*PI;
+				while(dB < -PI) dB += 2*PI;
+				// acercamiento exponencial (rapido al inicio, suave al final)
+				float k = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.055f);
+				Beta += dB * k;
+				Alpha += (wantAlpha - Alpha) * k;
+			}
+
+			// friccion progresiva: plena a menos de 1,5 grados, nula desde 6
+			float ramp = Clamp((DEGTORAD(6.0f) - minAngle) / DEGTORAD(4.5f), 0.0f, 1.0f);
+			if(gnGamepadAimAssist >= 1)
+				wantMult = 1.0f - Clamp(gfGamepadAimFriction, 0.0f, 0.9f) * ramp;
+		}else
+			lockRef = -1;
+		float fa = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.06f);
+		gfGamepadAimStickMult += (wantMult - gfGamepadAimStickMult) * fa;
+		wasAiming = aiming;
+	}
+}
+#endif
+
 void
 CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrientation, float, float)
 {
@@ -1616,104 +1722,7 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 	Beta += BetaOffset;
 
 #if defined ANDROID
-	// [Camera] GamepadAimV: apuntado con mando estilo GTA V.
-	//  1) Al presionar apuntar, si hay un enemigo cerca de donde mira la camara,
-	//     la mira "salta" suavemente hacia su pecho (bloqueo blando).
-	//  2) Despues se apunta libre con el stick derecho (se puede subir a la cabeza).
-	//  3) Mientras la mira pasa sobre un enemigo, el stick se frena ("friccion")
-	//     para que sea facil quedarse encima.
-	{
-		extern bool gbGamepadAimV;
-		extern int32 gnGamepadAimAssist;
-		extern float gfGamepadAimSnapAngle, gfGamepadAimFriction;
-		extern float gfGamepadAimStickMult;
-		extern bool IsPhysicalGamepadActive(void);
-		static bool wasAiming = false;
-		static int32 lockRef = -1;
-		static uint32 lockStart = 0;
-		float wantMult = 1.0f;
-
-		CPlayerPed *player = FindPlayerPed();
-		bool aiming = false;
-		if(gbGamepadAimV && IsPhysicalGamepadActive() && player && CamTargetEntity == player &&
-		   !FindPlayerVehicle() && !CPad::GetPad(0)->ArePlayerControlsDisabled() && CPad::GetPad(0)->GetTarget()){
-			eWeaponType w = player->GetWeapon()->m_eWeaponType;
-			aiming = w >= WEAPONTYPE_COLT45 && w != WEAPONTYPE_DETONATOR &&
-			         CWeaponInfo::GetWeaponInfo(w)->m_eWeaponFire == WEAPON_FIRE_INSTANT_HIT;
-		}
-
-		if(aiming){
-			// Direccion real de la mira (la mira esta corrida del centro).
-			float chX = DEGTORAD((TheCamera.m_f3rdPersonCHairMultX-0.5f) * 1.8f * 0.5f * FOV * CDraw::GetAspectRatio());
-			float chY = DEGTORAD((0.5f-TheCamera.m_f3rdPersonCHairMultY) * 1.8f * 0.5f * FOV);
-			float aimBeta = Beta - chX;
-			float aimAlpha = Alpha + chY;
-			CVector aimDir(Cos(aimAlpha)*Cos(aimBeta), Cos(aimAlpha)*Sin(aimBeta), Sin(aimAlpha));
-			CVector eye = Source;
-			float range = Min(CWeaponInfo::GetWeaponInfo(player->GetWeapon()->m_eWeaponType)->m_fRange, 60.0f);
-
-			// Busca el enemigo con menor angulo respecto de la mira.
-			CPed *best = nil;
-			float bestAngle = DEGTORAD(gfGamepadAimSnapAngle);
-			float minAngle = PI;
-			for(int i = CPools::GetPedPool()->GetSize()-1; i >= 0; i--){
-				CPed *ped = CPools::GetPedPool()->GetSlot(i);
-				if(!ped || ped == player || ped->DyingOrDead() || ped->bInVehicle)
-					continue;
-				CVector chest = ped->GetPosition();
-				chest.z += 0.3f;
-				CVector toPed = chest - eye;
-				float dist = toPed.Magnitude();
-				if(dist < 1.0f || dist > range + 8.0f)
-					continue;
-				toPed *= 1.0f/dist;
-				float cosA = DotProduct(toPed, aimDir);
-				if(cosA < 0.0f)
-					continue;
-				float ang = Acos(Min(cosA, 1.0f));
-				// la friccion se mide en tamano angular: un blanco lejano es mas chico
-				float angSize = ang * Max(1.0f, dist / 15.0f);
-				if(angSize < minAngle)
-					minAngle = angSize;
-				if(ang < bestAngle && CWorld::GetIsLineOfSightClear(eye, chest, true, true, false, true, false, false, false)){
-					bestAngle = ang;
-					best = ped;
-				}
-			}
-
-			if(!wasAiming){
-				// Solo con asistencia 2 hay bloqueo blando al apuntar.
-				lockRef = (best && gnGamepadAimAssist >= 2) ? CPools::GetPedRef(best) : -1;
-				lockStart = CTimer::GetTimeInMilliseconds();
-			}
-
-			// Bloqueo blando: ~0,2 s llevando la mira al pecho del objetivo.
-			CPed *lockPed = lockRef >= 0 ? CPools::GetPed(lockRef) : nil;
-			if(lockPed && !lockPed->DyingOrDead() && CTimer::GetTimeInMilliseconds() - lockStart < 260){
-				CVector chest = lockPed->GetPosition();
-				chest.z += 0.3f;
-				CVector d = chest - eye;
-				float wantBeta = CGeneral::GetATanOfXY(d.x, d.y) + chX;
-				float wantAlpha = CGeneral::GetATanOfXY(d.Magnitude2D(), d.z) - chY;
-				float dB = wantBeta - Beta;
-				while(dB >= PI) dB -= 2*PI;
-				while(dB < -PI) dB += 2*PI;
-				// acercamiento exponencial (rapido al inicio, suave al final)
-				float k = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.055f);
-				Beta += dB * k;
-				Alpha += (wantAlpha - Alpha) * k;
-			}
-
-			// friccion progresiva: plena a menos de 1,5 grados, nula desde 6
-			float ramp = Clamp((DEGTORAD(6.0f) - minAngle) / DEGTORAD(4.5f), 0.0f, 1.0f);
-			if(gnGamepadAimAssist >= 1)
-				wantMult = 1.0f - Clamp(gfGamepadAimFriction, 0.0f, 0.9f) * ramp;
-		}else
-			lockRef = -1;
-		float fa = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.06f);
-		gfGamepadAimStickMult += (wantMult - gfGamepadAimStickMult) * fa;
-		wasAiming = aiming;
-	}
+	GamepadAimAssistV(this, Alpha, Beta, false);
 #endif
 
 	while(Beta >= PI) Beta -= 2*PI;
@@ -3118,10 +3127,26 @@ CCam::Process_1rstPersonPedOnPC(const CVector&, float TargetOrientation, float, 
 			LookLeftRight = -CPad::GetPad(0)->LookAroundLeftRight();
 			LookUpDown = CPad::GetPad(0)->LookAroundUpDown();
 		}
+#if defined ANDROID
+		extern bool gbGamepadAimV;
+		extern bool IsPhysicalGamepadActive(void);
+#endif
 #ifdef GTA_PC_CONTROLS
 		if(UseMouse){
 			Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV/80.0f;
 			Alpha += TheCamera.m_fMouseAccelVertical * LookUpDown * FOV/80.0f;
+		}else
+#endif
+#if defined ANDROID
+		// Primera persona con mando: misma respuesta suave del stick y misma
+		// asistencia (friccion) que al apuntar en tercera persona.
+		if(gbGamepadAimV && IsPhysicalGamepadActive() && !CPad::GetPad(0)->ArePlayerControlsDisabled() &&
+		   Mode == MODE_1STPERSON_RUNABOUT){
+			float BetaOffset, AlphaOffset;
+			GamepadLookV(BetaOffset, AlphaOffset);
+			Beta += BetaOffset;
+			Alpha += AlphaOffset;
+			GamepadAimAssistV(this, Alpha, Beta, true);
 		}else
 #endif
 		{
