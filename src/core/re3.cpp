@@ -551,6 +551,9 @@ int32 gnRadarPosition = 0;
 float gfParticleDensity = 1.0f;
 float gfParticleMaxScreenSize = 0.6f;
 
+// [Graphics] CutsceneMotionBlur: 0 = sin desenfoque de movimiento en cinematicas.
+bool gbCutsceneMotionBlur = false;
+
 // [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
 // la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
 bool gbFirstPersonOption = true;
@@ -722,6 +725,7 @@ bool LoadINISettings()
 	ReadIniIfExists("HUD", "RadarPosition", &gnRadarPosition);
 	ReadIniIfExists("Particles", "Density", &gfParticleDensity);
 	ReadIniIfExists("Particles", "MaxScreenSize", &gfParticleMaxScreenSize);
+	ReadIniIfExists("Graphics", "CutsceneMotionBlur", &gbCutsceneMotionBlur);
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
@@ -853,6 +857,7 @@ void SaveINISettings()
 	StoreIni("HUD", "RadarPosition", gnRadarPosition);
 	StoreIni("Particles", "Density", gfParticleDensity);
 	StoreIni("Particles", "MaxScreenSize", gfParticleMaxScreenSize);
+	StoreIni("Graphics", "CutsceneMotionBlur", (uint8)gbCutsceneMotionBlur);
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);

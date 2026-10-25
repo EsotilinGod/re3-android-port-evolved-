@@ -12,6 +12,7 @@
 #include "Camera.h"
 #include "MBlur.h"
 #include "postfx.h"
+#include "CutsceneMgr.h"
 
 RwRaster *CPostFX::pFrontBuffer;
 RwRaster *CPostFX::pBackBuffer;
@@ -427,6 +428,16 @@ CPostFX::Render(RwCamera *cam, uint32 red, uint32 green, uint32 blue, uint32 blu
 	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)FALSE);
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)FALSE);
 
+#if defined ANDROID
+	// [Graphics] CutsceneMotionBlur: el desenfoque de movimiento mezcla el
+	// cuadro anterior con el actual; en las cinematicas (personajes moviendose
+	// contra un fondo quieto) deja una "estela" detras de ellos. Por defecto
+	// se apaga solo durante las cinematicas.
+	extern bool gbCutsceneMotionBlur;
+	bool savedBlur = MotionBlurOn;
+	if(MotionBlurOn && !gbCutsceneMotionBlur && CCutsceneMgr::IsRunning())
+		MotionBlurOn = false;
+#endif
 	if(type == MOTION_BLUR_SNIPER){
 		if(!bJustInitialised)
 			RenderOverlaySniper(cam, red, green, blue, blur);
@@ -454,6 +465,9 @@ CPostFX::Render(RwCamera *cam, uint32 red, uint32 green, uint32 blue, uint32 blu
 	if(MotionBlurOn)
 		if(!bJustInitialised)
 			RenderMotionBlur(cam, bluralpha);
+#if defined ANDROID
+	MotionBlurOn = savedBlur;
+#endif
 
 	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)TRUE);
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)TRUE);
