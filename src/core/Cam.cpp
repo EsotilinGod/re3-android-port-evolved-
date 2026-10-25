@@ -1624,6 +1624,7 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 	//     para que sea facil quedarse encima.
 	{
 		extern bool gbGamepadAimV;
+		extern int32 gnGamepadAimAssist;
 		extern float gfGamepadAimSnapAngle, gfGamepadAimFriction;
 		extern float gfGamepadAimStickMult;
 		extern bool IsPhysicalGamepadActive(void);
@@ -1681,7 +1682,8 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 			}
 
 			if(!wasAiming){
-				lockRef = best ? CPools::GetPedRef(best) : -1;
+				// Solo con asistencia 2 hay bloqueo blando al apuntar.
+				lockRef = (best && gnGamepadAimAssist >= 2) ? CPools::GetPedRef(best) : -1;
 				lockStart = CTimer::GetTimeInMilliseconds();
 			}
 
@@ -1704,7 +1706,8 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 
 			// friccion progresiva: plena a menos de 1,5 grados, nula desde 6
 			float ramp = Clamp((DEGTORAD(6.0f) - minAngle) / DEGTORAD(4.5f), 0.0f, 1.0f);
-			wantMult = 1.0f - Clamp(gfGamepadAimFriction, 0.0f, 0.9f) * ramp;
+			if(gnGamepadAimAssist >= 1)
+				wantMult = 1.0f - Clamp(gfGamepadAimFriction, 0.0f, 0.9f) * ramp;
 		}else
 			lockRef = -1;
 		float fa = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.06f);

@@ -1368,6 +1368,17 @@ void inputEventHandler() {
             case SDL_FINGERDOWN:
                 gbKbmActive = false;
                 break;
+            // Usar el mando tambien saca del modo teclado/raton (antes quedaba
+            // pegado si se habia tocado una tecla y el mando no se reconocia
+            // como "mando activo" para el apuntado).
+            case SDL_CONTROLLERBUTTONDOWN:
+            case SDL_JOYBUTTONDOWN:
+                gbKbmActive = false;
+                break;
+            case SDL_CONTROLLERAXISMOTION:
+                if (event.caxis.value > 12000 || event.caxis.value < -12000)
+                    gbKbmActive = false;
+                break;
 #endif
 
             // note that SDL_CONTROLLERDEVICEADDED/REMOVED exists, but it did not work for me

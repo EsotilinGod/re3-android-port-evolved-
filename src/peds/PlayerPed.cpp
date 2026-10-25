@@ -1027,6 +1027,11 @@ CPlayerPed::ProcessPlayerWeapon(CPad *padUsed)
 	// sin el auto-lock duro de GTA III); el "imán" lo pone Cam.cpp.
 	extern bool gbGamepadAimV;
 	extern bool IsPhysicalGamepadActive(void);
+	// Con mando y GamepadAimV la camara tiene que ser la "estandar" (la de
+	// raton/stick libre con mira). Si la configuracion de control quedo en
+	// "Clasica", la camara clasica fuerza el auto-apuntado de GTA III.
+	if (gbGamepadAimV && IsPhysicalGamepadActive() && !CCamera::m_bUseMouse3rdPerson)
+		CCamera::m_bUseMouse3rdPerson = true;
 	const bool bUsingMouse3rdPerson = (gbKbmActive || gbGamepadAimV && IsPhysicalGamepadActive()) && CCamera::m_bUseMouse3rdPerson;
 #else
 	const bool &bUsingMouse3rdPerson = CCamera::m_bUseMouse3rdPerson;

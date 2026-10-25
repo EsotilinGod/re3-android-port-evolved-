@@ -555,6 +555,9 @@ float gfDodoCeiling = 200.0f;
 // GamepadAimSnapAngle: grados alrededor de la mira para el bloqueo blando.
 // GamepadAimFriction: cuanto se frena el stick sobre un enemigo (0 = nada, 0.9 = mucho).
 bool gbGamepadAimV = true;
+// GamepadAimAssist: 0 = apuntado 100% libre, 1 = solo friccion sobre enemigos
+// (por defecto), 2 = friccion + la mira salta al enemigo al empezar a apuntar.
+int32 gnGamepadAimAssist = 1;
 float gfGamepadAimSnapAngle = 12.0f;
 float gfGamepadAimFriction = 0.45f;
 float gfGamepadAimStickMult = 1.0f; // estado interno
@@ -692,6 +695,7 @@ bool LoadINISettings()
 	ReadIniIfExists("Vehicles", "DodoFlight", &gbDodoFlight);
 	ReadIniIfExists("Vehicles", "DodoCeiling", &gfDodoCeiling);
 	ReadIniIfExists("Camera", "GamepadAimV", &gbGamepadAimV);
+	ReadIniIfExists("Camera", "GamepadAimAssist", &gnGamepadAimAssist);
 	ReadIniIfExists("Camera", "GamepadAimSnapAngle", &gfGamepadAimSnapAngle);
 	ReadIniIfExists("Camera", "GamepadAimFriction", &gfGamepadAimFriction);
 	ReadIniIfExists("Camera", "GamepadLookSpeed", &gfGamepadLookSpeed);
@@ -810,6 +814,7 @@ void SaveINISettings()
 	StoreIni("Vehicles", "DodoFlight", (uint8)gbDodoFlight);
 	StoreIni("Vehicles", "DodoCeiling", gfDodoCeiling);
 	StoreIni("Camera", "GamepadAimV", (uint8)gbGamepadAimV);
+	StoreIni("Camera", "GamepadAimAssist", gnGamepadAimAssist);
 	StoreIni("Camera", "GamepadAimSnapAngle", gfGamepadAimSnapAngle);
 	StoreIni("Camera", "GamepadAimFriction", gfGamepadAimFriction);
 	StoreIni("Camera", "GamepadLookSpeed", gfGamepadLookSpeed);
