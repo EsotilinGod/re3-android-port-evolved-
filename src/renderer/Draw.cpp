@@ -79,7 +79,18 @@ void
 CDraw::SetFOV(float fov)
 {
 #ifdef ASPECT_RATIO_SCALE
+#if defined ANDROID
+	// [Graphics] CutsceneHorPlus: re3 dejaba las cinematicas con el FOV
+	// horizontal original de 4:3 ("Vert-"): en una pantalla de telefono (~20:9)
+	// eso recorta muchisimo arriba y abajo, y con las barras negras se cortaban
+	// cabezas y caras. Con 1, las cinematicas se amplian hacia los lados como
+	// el juego normal ("Hor+"), y la franja entre barras muestra exactamente el
+	// encuadre vertical original de la escena.
+	extern bool gbCutsceneHorPlus;
+	if (!CCutsceneMgr::IsRunning() || gbCutsceneHorPlus)
+#else
 	if (!CCutsceneMgr::IsRunning())
+#endif
 		ms_fScaledFOV = ConvertFOV(fov);
 	else
 		ms_fScaledFOV = fov;
