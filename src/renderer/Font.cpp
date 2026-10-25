@@ -653,13 +653,32 @@ bool CFont::IsAnsiCharacter(wchar *s)
 bool gbHudOutlineActive = false;
 static bool sOutlineDrawing = false;
 static int sNumPending = 0;
-static struct { wchar str[128]; uint8 alpha; } sPending[6];
+static struct { wchar str[128]; uint8 alpha; float x, y; CFontDetails details; } sPending[16];
+
+// Las impresiones en negro que NO resultaron ser sombras (la municion y las
+// estrellas vacias son negras de verdad) se dibujan tal cual, en su lugar y
+// con su estilo, antes de que se rendericen las letras.
+void
+HudOutlineFlushPending(void)
+{
+	if (sNumPending == 0)
+		return;
+	CFontDetails saved = CFont::Details;
+	sOutlineDrawing = true;
+	for (int p = 0; p < sNumPending; p++) {
+		CFont::Details = sPending[p].details;
+		CFont::PrintString(sPending[p].x, sPending[p].y, sPending[p].str);
+	}
+	sOutlineDrawing = false;
+	CFont::Details = saved;
+	sNumPending = 0;
+}
 
 void
 HudOutlineEnd(void)
 {
+	HudOutlineFlushPending();
 	gbHudOutlineActive = false;
-	sNumPending = 0;
 }
 
 static bool
@@ -680,14 +699,19 @@ CFont::PrintString(float xstart, float ystart, wchar *s)
 	if (gbHudOutlineActive && !sOutlineDrawing && s) {
 		CRGBA col = Details.color;
 		if (col.r == 0 && col.g == 0 && col.b == 0) {
-			if (col.a > 0 && sNumPending < ARRAY_SIZE(sPending)) {
+			if (col.a > 0) {
+				if (sNumPending >= ARRAY_SIZE(sPending))
+					HudOutlineFlushPending();
 				int i = 0;
 				for (; i < 127 && s[i]; i++) sPending[sNumPending].str[i] = s[i];
 				sPending[sNumPending].str[i] = 0;
 				sPending[sNumPending].alpha = col.a;
+				sPending[sNumPending].x = xstart;
+				sPending[sNumPending].y = ystart;
+				sPending[sNumPending].details = Details;
 				sNumPending++;
 			}
-			return; // la sombra se reemplaza por el contorno
+			return; // si llega el mismo texto en color, esto era la sombra
 		}
 		for (int p = 0; p < sNumPending; p++) {
 			if (!HudOutlineSameStr(sPending[p].str, s))
@@ -1502,6 +1526,9 @@ CFont::ParseToken(wchar *s, wchar*)
 void
 CFont::DrawFonts(void)
 {
+#if defined ANDROID
+	HudOutlineFlushPending();
+#endif
 	CSprite2d::DrawBank(Details.bank);
 	CSprite2d::DrawBank(Details.bank+1);
 	CSprite2d::DrawBank(Details.bank+2);
