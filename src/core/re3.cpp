@@ -558,6 +558,11 @@ bool gbGamepadAimV = true;
 float gfGamepadAimSnapAngle = 12.0f;
 float gfGamepadAimFriction = 0.45f;
 float gfGamepadAimStickMult = 1.0f; // estado interno
+// Respuesta del stick derecho (solo con GamepadAimV):
+float gfGamepadLookSpeed = 200.0f; // grados/s mirando sin apuntar
+float gfGamepadAimSpeed = 85.0f;   // grados/s apuntando
+float gfGamepadDeadzone = 0.12f;   // zona muerta (0..0.5)
+float gfGamepadCurve = 2.0f;       // 1 = lineal, 2 = mas fino al centro
 
 bool LoadINISettings()
 {
@@ -689,6 +694,10 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "GamepadAimV", &gbGamepadAimV);
 	ReadIniIfExists("Camera", "GamepadAimSnapAngle", &gfGamepadAimSnapAngle);
 	ReadIniIfExists("Camera", "GamepadAimFriction", &gfGamepadAimFriction);
+	ReadIniIfExists("Camera", "GamepadLookSpeed", &gfGamepadLookSpeed);
+	ReadIniIfExists("Camera", "GamepadAimSpeed", &gfGamepadAimSpeed);
+	ReadIniIfExists("Camera", "GamepadDeadzone", &gfGamepadDeadzone);
+	ReadIniIfExists("Camera", "GamepadCurve", &gfGamepadCurve);
 
 	return true;
 }
@@ -803,6 +812,10 @@ void SaveINISettings()
 	StoreIni("Camera", "GamepadAimV", (uint8)gbGamepadAimV);
 	StoreIni("Camera", "GamepadAimSnapAngle", gfGamepadAimSnapAngle);
 	StoreIni("Camera", "GamepadAimFriction", gfGamepadAimFriction);
+	StoreIni("Camera", "GamepadLookSpeed", gfGamepadLookSpeed);
+	StoreIni("Camera", "GamepadAimSpeed", gfGamepadAimSpeed);
+	StoreIni("Camera", "GamepadDeadzone", gfGamepadDeadzone);
+	StoreIni("Camera", "GamepadCurve", gfGamepadCurve);
 
 	GetIniFile().write(cfg);
 }

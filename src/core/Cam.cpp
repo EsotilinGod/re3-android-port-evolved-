@@ -1495,6 +1495,56 @@ int16 nFadeControlThreshhold = 45;
 float fDefaultAlphaOrient = -0.22f;
 
 #ifdef GTA_PC_CONTROLS
+#if defined ANDROID
+// [Camera] GamepadAimV: respuesta del stick derecho estilo GTA V.
+// El original de GTA III tenia un salto: pasado el ~66% del recorrido del
+// stick la velocidad caia a 0 y volvia a subir (dos zonas muertas distintas),
+// por eso se sentia tosco. Aqui: zona muerta radial, curva de respuesta,
+// velocidad en grados/segundo independiente de los FPS, giro acelerado al
+// mantener el stick a fondo (solo sin apuntar), suavizado leve y la friccion
+// sobre enemigos.
+static void
+GamepadLookV(float &BetaOffset, float &AlphaOffset)
+{
+	extern float gfGamepadLookSpeed, gfGamepadAimSpeed, gfGamepadDeadzone, gfGamepadCurve;
+	extern float gfGamepadAimStickMult;
+	static float smX = 0.0f, smY = 0.0f, fullTime = 0.0f;
+	CPad *pad = CPad::GetPad(0);
+
+	float x = pad->NewState.RightStickX / 128.0f;
+	float y = -pad->NewState.RightStickY / 128.0f;
+#ifdef INVERT_LOOK_FOR_PAD
+	if(CPad::bInvertLook4Pad)
+		y = -y;
+#endif
+	float mag = Sqrt(x*x + y*y);
+	float dz = Clamp(gfGamepadDeadzone, 0.0f, 0.5f);
+	float ox = 0.0f, oy = 0.0f;
+	if(mag > dz){
+		float m = Min((mag - dz) / (1.0f - dz), 1.0f);
+		float c = Pow(m, Max(gfGamepadCurve, 1.0f));
+		ox = x / mag * c;
+		oy = y / mag * c;
+	}
+
+	float dt = CTimer::GetTimeStepInSeconds();
+	bool aiming = pad->GetTarget();
+	if(!aiming && Abs(ox) > 0.9f)
+		fullTime += dt;
+	else
+		fullTime = 0.0f;
+	float boost = 1.0f + 0.7f * Clamp((fullTime - 0.25f) / 0.35f, 0.0f, 1.0f);
+
+	float a = 1.0f - Pow(2.718f, -dt / 0.03f);
+	smX += (ox - smX) * a;
+	smY += (oy - smY) * a;
+
+	float speed = DEGTORAD(aiming ? gfGamepadAimSpeed : gfGamepadLookSpeed);
+	BetaOffset = -smX * speed * boost * dt * gfGamepadAimStickMult;
+	AlphaOffset = smY * speed * 0.6f * dt * gfGamepadAimStickMult;
+}
+#endif
+
 void
 CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrientation, float, float)
 {
@@ -1535,13 +1585,17 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 		BetaOffset = LookLeftRight * TheCamera.m_fMouseAccelHorzntl * FOV/80.0f;
 		AlphaOffset = LookUpDown * TheCamera.m_fMouseAccelVertical * FOV/80.0f;
 	}else{
+#if defined ANDROID
+		extern bool gbGamepadAimV;
+		extern bool IsPhysicalGamepadActive(void);
+		if(gbGamepadAimV && IsPhysicalGamepadActive() && !CPad::GetPad(0)->ArePlayerControlsDisabled())
+			GamepadLookV(BetaOffset, AlphaOffset);
+		else
+#endif
+		{
 		BetaOffset = LookLeftRight * fStickSens * (1.0f/14.0f) * FOV/80.0f * CTimer::GetTimeStep();
 		AlphaOffset = LookUpDown * fStickSens * (0.6f/14.0f) * FOV/80.0f * CTimer::GetTimeStep();
-#if defined ANDROID
-		extern float gfGamepadAimStickMult;
-		BetaOffset *= gfGamepadAimStickMult;
-		AlphaOffset *= gfGamepadAimStickMult;
-#endif
+		}
 	}
 
 	if(TheCamera.GetFading() && TheCamera.GetFadingDirection() == FADE_IN && nFadeControlThreshhold < CDraw::FadeValue ||
@@ -1576,7 +1630,7 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 		static bool wasAiming = false;
 		static int32 lockRef = -1;
 		static uint32 lockStart = 0;
-		gfGamepadAimStickMult = 1.0f;
+		float wantMult = 1.0f;
 
 		CPlayerPed *player = FindPlayerPed();
 		bool aiming = false;
@@ -1600,8 +1654,7 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 			// Busca el enemigo con menor angulo respecto de la mira.
 			CPed *best = nil;
 			float bestAngle = DEGTORAD(gfGamepadAimSnapAngle);
-			float frictionAngle = DEGTORAD(4.0f);
-			bool onTarget = false;
+			float minAngle = PI;
 			for(int i = CPools::GetPedPool()->GetSize()-1; i >= 0; i--){
 				CPed *ped = CPools::GetPedPool()->GetSlot(i);
 				if(!ped || ped == player || ped->DyingOrDead() || ped->bInVehicle)
@@ -1617,8 +1670,10 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 				if(cosA < 0.0f)
 					continue;
 				float ang = Acos(Min(cosA, 1.0f));
-				if(ang < frictionAngle)
-					onTarget = true;
+				// la friccion se mide en tamano angular: un blanco lejano es mas chico
+				float angSize = ang * Max(1.0f, dist / 15.0f);
+				if(angSize < minAngle)
+					minAngle = angSize;
 				if(ang < bestAngle && CWorld::GetIsLineOfSightClear(eye, chest, true, true, false, true, false, false, false)){
 					bestAngle = ang;
 					best = ped;
@@ -1632,7 +1687,7 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 
 			// Bloqueo blando: ~0,2 s llevando la mira al pecho del objetivo.
 			CPed *lockPed = lockRef >= 0 ? CPools::GetPed(lockRef) : nil;
-			if(lockPed && !lockPed->DyingOrDead() && CTimer::GetTimeInMilliseconds() - lockStart < 200){
+			if(lockPed && !lockPed->DyingOrDead() && CTimer::GetTimeInMilliseconds() - lockStart < 260){
 				CVector chest = lockPed->GetPosition();
 				chest.z += 0.3f;
 				CVector d = chest - eye;
@@ -1641,15 +1696,19 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 				float dB = wantBeta - Beta;
 				while(dB >= PI) dB -= 2*PI;
 				while(dB < -PI) dB += 2*PI;
-				float k = Min(1.0f, 0.35f * CTimer::GetTimeStep());
+				// acercamiento exponencial (rapido al inicio, suave al final)
+				float k = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.055f);
 				Beta += dB * k;
 				Alpha += (wantAlpha - Alpha) * k;
 			}
 
-			if(onTarget)
-				gfGamepadAimStickMult = Clamp(1.0f - gfGamepadAimFriction, 0.1f, 1.0f);
+			// friccion progresiva: plena a menos de 1,5 grados, nula desde 6
+			float ramp = Clamp((DEGTORAD(6.0f) - minAngle) / DEGTORAD(4.5f), 0.0f, 1.0f);
+			wantMult = 1.0f - Clamp(gfGamepadAimFriction, 0.0f, 0.9f) * ramp;
 		}else
 			lockRef = -1;
+		float fa = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.06f);
+		gfGamepadAimStickMult += (wantMult - gfGamepadAimStickMult) * fa;
 		wasAiming = aiming;
 	}
 #endif
