@@ -1023,7 +1023,11 @@ CPlayerPed::ProcessPlayerWeapon(CPad *padUsed)
 	// Con raton fisico se respeta la bandera real: apuntado libre con el
 	// raton, sin auto-lock, igual que en PC. Con tactil/mando sigue en false.
 	extern bool gbKbmActive;
-	const bool bUsingMouse3rdPerson = gbKbmActive && CCamera::m_bUseMouse3rdPerson;
+	// [Camera] GamepadAimV: con mando, apuntado libre estilo GTA V (la mira,
+	// sin el auto-lock duro de GTA III); el "imán" lo pone Cam.cpp.
+	extern bool gbGamepadAimV;
+	extern bool IsPhysicalGamepadActive(void);
+	const bool bUsingMouse3rdPerson = (gbKbmActive || gbGamepadAimV && IsPhysicalGamepadActive()) && CCamera::m_bUseMouse3rdPerson;
 #else
 	const bool &bUsingMouse3rdPerson = CCamera::m_bUseMouse3rdPerson;
 #endif

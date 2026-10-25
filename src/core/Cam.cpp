@@ -14,6 +14,7 @@
 #include "Pad.h"
 #include "Frontend.h"
 #include "General.h"
+#include "Pools.h"
 #include "Renderer.h"
 #include "Shadows.h"
 #include "Hud.h"
@@ -1536,6 +1537,11 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 	}else{
 		BetaOffset = LookLeftRight * fStickSens * (1.0f/14.0f) * FOV/80.0f * CTimer::GetTimeStep();
 		AlphaOffset = LookUpDown * fStickSens * (0.6f/14.0f) * FOV/80.0f * CTimer::GetTimeStep();
+#if defined ANDROID
+		extern float gfGamepadAimStickMult;
+		BetaOffset *= gfGamepadAimStickMult;
+		AlphaOffset *= gfGamepadAimStickMult;
+#endif
 	}
 
 	if(TheCamera.GetFading() && TheCamera.GetFadingDirection() == FADE_IN && nFadeControlThreshhold < CDraw::FadeValue ||
@@ -1554,6 +1560,100 @@ CCam::Process_FollowPedWithMouse(const CVector &CameraTarget, float TargetOrient
 
 	Alpha += AlphaOffset;
 	Beta += BetaOffset;
+
+#if defined ANDROID
+	// [Camera] GamepadAimV: apuntado con mando estilo GTA V.
+	//  1) Al presionar apuntar, si hay un enemigo cerca de donde mira la camara,
+	//     la mira "salta" suavemente hacia su pecho (bloqueo blando).
+	//  2) Despues se apunta libre con el stick derecho (se puede subir a la cabeza).
+	//  3) Mientras la mira pasa sobre un enemigo, el stick se frena ("friccion")
+	//     para que sea facil quedarse encima.
+	{
+		extern bool gbGamepadAimV;
+		extern float gfGamepadAimSnapAngle, gfGamepadAimFriction;
+		extern float gfGamepadAimStickMult;
+		extern bool IsPhysicalGamepadActive(void);
+		static bool wasAiming = false;
+		static int32 lockRef = -1;
+		static uint32 lockStart = 0;
+		gfGamepadAimStickMult = 1.0f;
+
+		CPlayerPed *player = FindPlayerPed();
+		bool aiming = false;
+		if(gbGamepadAimV && IsPhysicalGamepadActive() && player && CamTargetEntity == player &&
+		   !FindPlayerVehicle() && !CPad::GetPad(0)->ArePlayerControlsDisabled() && CPad::GetPad(0)->GetTarget()){
+			eWeaponType w = player->GetWeapon()->m_eWeaponType;
+			aiming = w >= WEAPONTYPE_COLT45 && w != WEAPONTYPE_DETONATOR &&
+			         CWeaponInfo::GetWeaponInfo(w)->m_eWeaponFire == WEAPON_FIRE_INSTANT_HIT;
+		}
+
+		if(aiming){
+			// Direccion real de la mira (la mira esta corrida del centro).
+			float chX = DEGTORAD((TheCamera.m_f3rdPersonCHairMultX-0.5f) * 1.8f * 0.5f * FOV * CDraw::GetAspectRatio());
+			float chY = DEGTORAD((0.5f-TheCamera.m_f3rdPersonCHairMultY) * 1.8f * 0.5f * FOV);
+			float aimBeta = Beta - chX;
+			float aimAlpha = Alpha + chY;
+			CVector aimDir(Cos(aimAlpha)*Cos(aimBeta), Cos(aimAlpha)*Sin(aimBeta), Sin(aimAlpha));
+			CVector eye = Source;
+			float range = Min(CWeaponInfo::GetWeaponInfo(player->GetWeapon()->m_eWeaponType)->m_fRange, 60.0f);
+
+			// Busca el enemigo con menor angulo respecto de la mira.
+			CPed *best = nil;
+			float bestAngle = DEGTORAD(gfGamepadAimSnapAngle);
+			float frictionAngle = DEGTORAD(4.0f);
+			bool onTarget = false;
+			for(int i = CPools::GetPedPool()->GetSize()-1; i >= 0; i--){
+				CPed *ped = CPools::GetPedPool()->GetSlot(i);
+				if(!ped || ped == player || ped->DyingOrDead() || ped->bInVehicle)
+					continue;
+				CVector chest = ped->GetPosition();
+				chest.z += 0.3f;
+				CVector toPed = chest - eye;
+				float dist = toPed.Magnitude();
+				if(dist < 1.0f || dist > range + 8.0f)
+					continue;
+				toPed *= 1.0f/dist;
+				float cosA = DotProduct(toPed, aimDir);
+				if(cosA < 0.0f)
+					continue;
+				float ang = Acos(Min(cosA, 1.0f));
+				if(ang < frictionAngle)
+					onTarget = true;
+				if(ang < bestAngle && CWorld::GetIsLineOfSightClear(eye, chest, true, true, false, true, false, false, false)){
+					bestAngle = ang;
+					best = ped;
+				}
+			}
+
+			if(!wasAiming){
+				lockRef = best ? CPools::GetPedRef(best) : -1;
+				lockStart = CTimer::GetTimeInMilliseconds();
+			}
+
+			// Bloqueo blando: ~0,2 s llevando la mira al pecho del objetivo.
+			CPed *lockPed = lockRef >= 0 ? CPools::GetPed(lockRef) : nil;
+			if(lockPed && !lockPed->DyingOrDead() && CTimer::GetTimeInMilliseconds() - lockStart < 200){
+				CVector chest = lockPed->GetPosition();
+				chest.z += 0.3f;
+				CVector d = chest - eye;
+				float wantBeta = CGeneral::GetATanOfXY(d.x, d.y) + chX;
+				float wantAlpha = CGeneral::GetATanOfXY(d.Magnitude2D(), d.z) - chY;
+				float dB = wantBeta - Beta;
+				while(dB >= PI) dB -= 2*PI;
+				while(dB < -PI) dB += 2*PI;
+				float k = Min(1.0f, 0.35f * CTimer::GetTimeStep());
+				Beta += dB * k;
+				Alpha += (wantAlpha - Alpha) * k;
+			}
+
+			if(onTarget)
+				gfGamepadAimStickMult = Clamp(1.0f - gfGamepadAimFriction, 0.1f, 1.0f);
+		}else
+			lockRef = -1;
+		wasAiming = aiming;
+	}
+#endif
+
 	while(Beta >= PI) Beta -= 2*PI;
 	while(Beta < -PI) Beta += 2*PI;
 	if(Alpha > DEGTORAD(45.0f)) Alpha = DEGTORAD(45.0f);

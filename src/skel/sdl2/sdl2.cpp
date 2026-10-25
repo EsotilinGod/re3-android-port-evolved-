@@ -2002,6 +2002,12 @@ Java_com_re3_game_TouchControlsView_nativeIsControllerConnected(JNIEnv *env, job
     return gamepad1 != nullptr || gbKbmActive;
 }
 
+// Mando fisico manejando el juego (no teclado/raton, no tactil).
+bool IsPhysicalGamepadActive(void)
+{
+    return gamepad1 != nullptr && !gbKbmActive;
+}
+
 // re3 (this repo) never grew SDL2 support upstream -- ControllerConfig.cpp's
 // mappedButtons[] scheme (MAX_BUTTONS = 17 slots) was built entirely around
 // GLFW's GLFW_GAMEPAD_BUTTON_* ordering (see MapIdToButtonId() in

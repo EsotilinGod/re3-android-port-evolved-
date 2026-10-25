@@ -551,6 +551,14 @@ char gsReloadKey[8] = "R";
 bool gbDodoFlight = true;
 float gfDodoCeiling = 200.0f;
 
+// [Camera] GamepadAimV: apuntado con mando estilo GTA V.
+// GamepadAimSnapAngle: grados alrededor de la mira para el bloqueo blando.
+// GamepadAimFriction: cuanto se frena el stick sobre un enemigo (0 = nada, 0.9 = mucho).
+bool gbGamepadAimV = true;
+float gfGamepadAimSnapAngle = 12.0f;
+float gfGamepadAimFriction = 0.45f;
+float gfGamepadAimStickMult = 1.0f; // estado interno
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -678,6 +686,9 @@ bool LoadINISettings()
 	ReadIniIfExists("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
 	ReadIniIfExists("Vehicles", "DodoFlight", &gbDodoFlight);
 	ReadIniIfExists("Vehicles", "DodoCeiling", &gfDodoCeiling);
+	ReadIniIfExists("Camera", "GamepadAimV", &gbGamepadAimV);
+	ReadIniIfExists("Camera", "GamepadAimSnapAngle", &gfGamepadAimSnapAngle);
+	ReadIniIfExists("Camera", "GamepadAimFriction", &gfGamepadAimFriction);
 
 	return true;
 }
@@ -789,6 +800,9 @@ void SaveINISettings()
 	StoreIni("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
 	StoreIni("Vehicles", "DodoFlight", (uint8)gbDodoFlight);
 	StoreIni("Vehicles", "DodoCeiling", gfDodoCeiling);
+	StoreIni("Camera", "GamepadAimV", (uint8)gbGamepadAimV);
+	StoreIni("Camera", "GamepadAimSnapAngle", gfGamepadAimSnapAngle);
+	StoreIni("Camera", "GamepadAimFriction", gfGamepadAimFriction);
 
 	GetIniFile().write(cfg);
 }
