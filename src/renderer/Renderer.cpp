@@ -30,7 +30,11 @@ bool gbShowCarRoadGroups;
 bool gbShowCollisionPolys;
 bool gbShowCollisionLines;
 bool gbShowCullZoneDebugStuff;
+#if defined ANDROID
+bool gbDisableZoneCull = true;	// not original (Widescreen Fix: DisableZoneCull = 1, objetos que desaparecian)
+#else
 bool gbDisableZoneCull;	// not original
+#endif
 bool gbBigWhiteDebugLightSwitchedOn;
 
 bool gbDontRenderBuildings;

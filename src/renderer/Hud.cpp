@@ -20,6 +20,7 @@
 #include "TxdStore.h"
 #include "User.h"
 #include "World.h"
+#include "HudScale.h"
 
 #ifdef PS2_HUD
 #define MONEY_X 100.0f

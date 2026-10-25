@@ -674,7 +674,25 @@ CCamera::Process(void)
 		SetMotionBlur(230, 230, 230, 215, MOTION_BLUR_LIGHT_SCENE);
 
 	CalculateDerivedValues();
+#if defined ANDROID
+	// [Camera] CarSpeedFOV (Widescreen Fix): el campo de vision se abre con la
+	// velocidad del auto, para dar sensacion de rapidez.
+	{
+		extern bool gbCarSpeedFOV;
+		static float extraFOV = 0.0f;
+		float want = 0.0f;
+		CVehicle *veh = FindPlayerVehicle();
+		if(gbCarSpeedFOV && veh && pTargetEntity == veh && !m_WideScreenOn &&
+		   (Cams[ActiveCam].Mode == CCam::MODE_CAM_ON_A_STRING || Cams[ActiveCam].Mode == CCam::MODE_BEHINDCAR)){
+			float speed = DotProduct(veh->GetMoveSpeed(), veh->GetForward());
+			want = Clamp((speed - 0.35f) * 18.0f, 0.0f, 12.0f);
+		}
+		extraFOV += (want - extraFOV) * (1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.5f));
+		CDraw::SetFOV(FOV + extraFOV);
+	}
+#else
 	CDraw::SetFOV(FOV);
+#endif
 
 	// Set RW camera
 	if(WorldViewerBeingUsed){

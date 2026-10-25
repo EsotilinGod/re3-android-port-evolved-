@@ -19,6 +19,7 @@
 #include "SaveBuf.h"
 #include "Streaming.h"
 #include "SpecialFX.h"
+#include "HudScale.h"
 
 float CRadar::m_radarRange;
 sRadarTrace CRadar::ms_RadarTrace[NUMRADARBLIPS];

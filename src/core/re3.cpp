@@ -556,6 +556,13 @@ bool gbCutsceneMotionBlur = false;
 // [Graphics] CutsceneHorPlus: 1 = cinematicas sin recorte en pantallas anchas.
 bool gbCutsceneHorPlus = true;
 
+// Ajustes tomados del Widescreen Fix (ThirteenAG) con sus valores por defecto.
+float gfHudScaleW = 0.8f;      // [HUD] HudWidthScale (original 1.0)
+float gfHudScaleH = 0.8f;      // [HUD] HudHeightScale (original 1.0)
+float gfRadarWidth = 97.5f;    // [HUD] RadarWidth (original 94)
+float gfRadarHeight = 91.0f;   // [HUD] RadarHeight (original 76)
+bool gbCarSpeedFOV = true;     // [Camera] CarSpeedFOV
+
 // [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
 // la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
 bool gbFirstPersonOption = true;
@@ -729,6 +736,15 @@ bool LoadINISettings()
 	ReadIniIfExists("Particles", "MaxScreenSize", &gfParticleMaxScreenSize);
 	ReadIniIfExists("Graphics", "CutsceneMotionBlur", &gbCutsceneMotionBlur);
 	ReadIniIfExists("Graphics", "CutsceneHorPlus", &gbCutsceneHorPlus);
+	ReadIniIfExists("HUD", "HudWidthScale", &gfHudScaleW);
+	ReadIniIfExists("HUD", "HudHeightScale", &gfHudScaleH);
+	ReadIniIfExists("HUD", "RadarWidth", &gfRadarWidth);
+	ReadIniIfExists("HUD", "RadarHeight", &gfRadarHeight);
+	ReadIniIfExists("Camera", "CarSpeedFOV", &gbCarSpeedFOV);
+	{
+		extern bool gbDisableZoneCull;
+		ReadIniIfExists("Graphics", "DisableZoneCull", &gbDisableZoneCull);
+	}
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
@@ -862,6 +878,15 @@ void SaveINISettings()
 	StoreIni("Particles", "MaxScreenSize", gfParticleMaxScreenSize);
 	StoreIni("Graphics", "CutsceneMotionBlur", (uint8)gbCutsceneMotionBlur);
 	StoreIni("Graphics", "CutsceneHorPlus", (uint8)gbCutsceneHorPlus);
+	StoreIni("HUD", "HudWidthScale", gfHudScaleW);
+	StoreIni("HUD", "HudHeightScale", gfHudScaleH);
+	StoreIni("HUD", "RadarWidth", gfRadarWidth);
+	StoreIni("HUD", "RadarHeight", gfRadarHeight);
+	StoreIni("Camera", "CarSpeedFOV", (uint8)gbCarSpeedFOV);
+	{
+		extern bool gbDisableZoneCull;
+		StoreIni("Graphics", "DisableZoneCull", (uint8)gbDisableZoneCull);
+	}
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);

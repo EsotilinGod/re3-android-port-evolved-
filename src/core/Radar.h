@@ -103,7 +103,12 @@ VALIDATE_SIZE(sRadarTrace, 0x30);
 #define RADAR_TOP (30.0f)
 #endif
 
-#ifdef FIX_RADAR
+#if defined ANDROID
+// [HUD] RadarWidth / RadarHeight (Widescreen Fix: 97.5 x 91 = escala de GTA IV, radar redondo)
+extern float gfRadarWidth, gfRadarHeight;
+#define RADAR_WIDTH (gfRadarWidth)
+#define RADAR_HEIGHT (gfRadarHeight)
+#elif defined FIX_RADAR
 /*
 	The values are from an early screenshot taken before R* broke radar
 		#define RADAR_WIDTH (82.0f)
