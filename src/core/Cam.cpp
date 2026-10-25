@@ -1552,6 +1552,21 @@ GamepadLookV(float &BetaOffset, float &AlphaOffset)
 	//  2) Despues se apunta libre con el stick derecho (se puede subir a la cabeza).
 	//  3) Mientras la mira pasa sobre un enemigo, el stick se frena ("friccion")
 	//     para que sea facil quedarse encima.
+// [Mouse] AimSensitivity: con raton, al mantener apuntar (clic derecho) con un
+// arma de fuego la sensibilidad baja (como en GTA V), para apuntar fino.
+static float
+MouseAimSensMult(void)
+{
+	extern float gfMouseAimSensitivity;
+	CPlayerPed *player = FindPlayerPed();
+	if(player && !FindPlayerVehicle() && CPad::GetPad(0)->GetTarget()){
+		eWeaponType w = player->GetWeapon()->m_eWeaponType;
+		if(w >= WEAPONTYPE_COLT45 && w != WEAPONTYPE_DETONATOR)
+			return Clamp(gfMouseAimSensitivity, 0.1f, 2.0f);
+	}
+	return 1.0f;
+}
+
 static void
 GamepadAimAssistV(CCam *cam, float &Alpha, float &Beta, bool centered)
 {
@@ -3133,8 +3148,13 @@ CCam::Process_1rstPersonPedOnPC(const CVector&, float TargetOrientation, float, 
 #endif
 #ifdef GTA_PC_CONTROLS
 		if(UseMouse){
-			Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV/80.0f;
-			Alpha += TheCamera.m_fMouseAccelVertical * LookUpDown * FOV/80.0f;
+#if defined ANDROID
+			float aimMult = Mode == MODE_1STPERSON_RUNABOUT ? MouseAimSensMult() : 1.0f;
+#else
+			float aimMult = 1.0f;
+#endif
+			Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV/80.0f * aimMult;
+			Alpha += TheCamera.m_fMouseAccelVertical * LookUpDown * FOV/80.0f * aimMult;
 		}else
 #endif
 #if defined ANDROID
@@ -4927,6 +4947,11 @@ CCam::Process_FollowPed_Rotation(const CVector &CameraTarget, float TargetOrient
 	if(UseMouse){
 		BetaOffset = LookLeftRight * TheCamera.m_fMouseAccelHorzntl * FOV/80.0f;
 		AlphaOffset = LookUpDown * TheCamera.m_fMouseAccelVertical * FOV/80.0f;
+#if defined ANDROID
+		float aimMult = MouseAimSensMult();
+		BetaOffset *= aimMult;
+		AlphaOffset *= aimMult;
+#endif
 	}else{
 		BetaOffset = LookLeftRight * fStickSens * (1.0f/20.0f) * FOV/80.0f * CTimer::GetTimeStep();
 		AlphaOffset = LookUpDown * fStickSens * (0.6f/20.0f) * FOV/80.0f * CTimer::GetTimeStep();

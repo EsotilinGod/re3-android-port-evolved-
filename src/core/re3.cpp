@@ -533,6 +533,8 @@ int32 gnFPSLimit = 60;
 
 // [Mouse] Smoothing: 0 = crudo, 0.5 = suave (por defecto), 0.8 = muy suave.
 float gfMouseSmoothing = 0.5f;
+// [Mouse] AimSensitivity: multiplicador de sensibilidad al apuntar (1 = igual).
+float gfMouseAimSensitivity = 0.6f;
 
 // [Camera] FirstPerson / FirstPersonKey: primera persona a pie, se alterna con
 // la tecla (por defecto V). gbFirstPersonOn es el estado actual (no se guarda).
@@ -698,6 +700,7 @@ bool LoadINISettings()
 	ReadIniIfExists("Display", "VSync", &gbVSync);
 	ReadIniIfExists("Display", "FPSLimit", &gnFPSLimit);
 	ReadIniIfExists("Mouse", "Smoothing", &gfMouseSmoothing);
+	ReadIniIfExists("Mouse", "AimSensitivity", &gfMouseAimSensitivity);
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
@@ -822,6 +825,7 @@ void SaveINISettings()
 	StoreIni("Display", "VSync", (uint8)gbVSync);
 	StoreIni("Display", "FPSLimit", gnFPSLimit);
 	StoreIni("Mouse", "Smoothing", gfMouseSmoothing);
+	StoreIni("Mouse", "AimSensitivity", gfMouseAimSensitivity);
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
