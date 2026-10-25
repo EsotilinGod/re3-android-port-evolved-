@@ -764,6 +764,18 @@ CAnimManager::LoadAnimFiles(void)
 	int i, j;
 
 	LoadAnimFile("ANIM\\PED.IFP");
+#if defined ANDROID
+	// Animaciones de brazos para la primera persona (opcional): si el jugador
+	// copio anim/fps.ifp del mod "First Person View for III" (GeniusZ /
+	// Shagg_E), se carga sin comprimir en su propio bloque "fps".
+	{
+		int fd = CFileMgr::OpenFile("ANIM\\FPS.IFP", "rb");
+		if(fd > 0){
+			LoadAnimFile(fd, false);
+			CFileMgr::CloseFile(fd);
+		}
+	}
+#endif
 
 	// Create all assoc groups
 	ms_aAnimAssocGroups = new CAnimBlendAssocGroup[NUM_ANIM_ASSOC_GROUPS];

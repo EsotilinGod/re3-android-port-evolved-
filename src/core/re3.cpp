@@ -541,6 +541,10 @@ bool gbFirstPersonOn = false;
 char gsFirstPersonKey[8] = "V";
 // [Camera] FirstPersonBody: 1 = se ven brazos, arma y cuerpo del personaje.
 bool gbFirstPersonBody = true;
+// [Camera] FirstPersonArms: usa anim/fps.ifp (si existe) para los brazos.
+// FirstPersonArmPitch: cuanto siguen los brazos la inclinacion de la camara.
+bool gbFirstPersonArms = true;
+float gfFirstPersonArmPitch = 1.0f;
 
 // [Weapons] ManualReload / ReloadKey: recargar con una tecla (por defecto R).
 bool gbManualReload = true;
@@ -697,6 +701,8 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "FirstPerson", &gbFirstPersonOption);
 	ReadIniIfExists("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
+	ReadIniIfExists("Camera", "FirstPersonArms", &gbFirstPersonArms);
+	ReadIniIfExists("Camera", "FirstPersonArmPitch", &gfFirstPersonArmPitch);
 	ReadIniIfExists("Weapons", "ManualReload", &gbManualReload);
 	ReadIniIfExists("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
 	ReadIniIfExists("Vehicles", "DodoFlight", &gbDodoFlight);
@@ -819,6 +825,8 @@ void SaveINISettings()
 	StoreIni("Camera", "FirstPerson", (uint8)gbFirstPersonOption);
 	StoreIni("Camera", "FirstPersonKey", gsFirstPersonKey, sizeof(gsFirstPersonKey));
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
+	StoreIni("Camera", "FirstPersonArms", (uint8)gbFirstPersonArms);
+	StoreIni("Camera", "FirstPersonArmPitch", gfFirstPersonArmPitch);
 	StoreIni("Weapons", "ManualReload", (uint8)gbManualReload);
 	StoreIni("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
 	StoreIni("Vehicles", "DodoFlight", (uint8)gbDodoFlight);

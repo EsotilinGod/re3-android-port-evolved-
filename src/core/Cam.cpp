@@ -3064,6 +3064,22 @@ CCam::Process_1rstPersonPedOnPC(const CVector&, float TargetOrientation, float, 
 
 		m_vecBufferedPlayerBodyOffset.y = HeadPos.y;
 
+		// [Camera] Con brazos de primera persona: camara en los ojos reales
+		// del personaje (posicion guardada antes de ocultar la cabeza),
+		// suavizada respecto del cuerpo para que no tiemble al correr.
+		extern bool gbFPArmsActive, gbFPEyeValid;
+		extern CVector gvFPEyeLocal;
+		if(gbFPArmsActive && gbFPEyeValid && CamTargetEntity == FindPlayerPed()){
+			static CVector smoothEye(0.0f, 0.0f, 0.0f);
+			static bool smoothInit = false;
+			if(ResetStatics || !smoothInit){
+				smoothEye = gvFPEyeLocal;
+				smoothInit = true;
+			}
+			float k = 1.0f - Pow(2.718f, -CTimer::GetTimeStepInSeconds() / 0.07f);
+			smoothEye += (gvFPEyeLocal - smoothEye) * k;
+			HeadPos = CamTargetEntity->GetMatrix() * smoothEye;
+		}else
 		if(TheCamera.m_bHeadBob){
 			m_vecBufferedPlayerBodyOffset.x =
 				TheCamera.m_fGaitSwayBuffer * m_vecBufferedPlayerBodyOffset.x +

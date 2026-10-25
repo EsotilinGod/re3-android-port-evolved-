@@ -3598,8 +3598,12 @@ CCamera::Find3rdPersonQuickAimPitch(void)
 
 	float rot = Asin(clampedFrontZ);
 
-	if(Cams[ActiveCam].Mode == CCam::MODE_1STPERSON_RUNABOUT)
-		return -rot; // mira al centro en primera persona
+	if(Cams[ActiveCam].Mode == CCam::MODE_1STPERSON_RUNABOUT){
+		// Con brazos de primera persona, el torso no se inclina (los brazos
+		// ya siguen la camara); si no, el apuntado normal inclina el torso.
+		extern bool gbFPArmsActive;
+		return gbFPArmsActive ? 0.0f : -rot; // mira al centro en primera persona
+	}
 	return -(DEGTORAD(((0.5f - m_f3rdPersonCHairMultY) * 1.8f * 0.5f * Cams[ActiveCam].FOV)) + rot);
 }
 

@@ -4871,6 +4871,12 @@ CPed::ClearWeapons(void)
 void
 CPed::PreRender(void)
 {
+#if defined ANDROID
+	if (IsPlayer()) {
+		extern void FirstPersonArmsUpdate(CPed *ped);
+		FirstPersonArmsUpdate(this);
+	}
+#endif
 	CShadows::StoreShadowForPed(this,
 		CTimeCycle::m_fShadowDisplacementX[CTimeCycle::m_CurrentStoredValue], CTimeCycle::m_fShadowDisplacementY[CTimeCycle::m_CurrentStoredValue],
 		CTimeCycle::m_fShadowFrontX[CTimeCycle::m_CurrentStoredValue], CTimeCycle::m_fShadowFrontY[CTimeCycle::m_CurrentStoredValue],

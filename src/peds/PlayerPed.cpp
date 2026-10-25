@@ -1796,3 +1796,298 @@ CPlayerPed::Load(uint8*& buf)
 #undef CopyFromBuf
 #undef CopyToBuf
 #endif
+
+
+#if defined ANDROID
+// ============================================================================
+// Brazos en primera persona (inspirado en "First Person View for III" de
+// GeniusZ, animaciones de Shagg_E). Si el jugador copia anim/fps.ifp (y
+// opcionalmente fp_weapons.dat) a su carpeta del juego, en primera persona se
+// reemplaza la pose de los brazos por esas animaciones (idle/disparo/recarga/
+// sprint por arma), los brazos siguen la inclinacion de la camara y se oculta
+// la cabeza para que no tape la vista. Todo se aplica despues de las
+// animaciones normales del juego, sin tocarlas: la logica de disparo sigue
+// siendo la original.
+// ============================================================================
+#include "AnimManager.h"
+#include "AnimBlendHierarchy.h"
+#include "AnimBlendClumpData.h"
+#include "AnimBlendNode.h"
+#include "FileMgr.h"
+
+bool gbFPArmsActive = false;
+bool gbFPEyeValid = false;
+CVector gvFPEyeLocal(0.0f, 0.0f, 0.6f);
+
+static const char *kFPBones[6] = { "Supperarmr", "Slowerarmr", "SRhand", "Supperarml", "Slowerarml", "SLhand" };
+static CAnimBlendAssociation *sFPAssoc = nil;
+static char sFPAssocName[32] = "";
+static CQuaternion sFPLast[6];
+static bool sFPHaveLast[6];
+static bool sFPHeadHidden = false;
+static CPed *sFPPed = nil;
+
+struct FPLoop { float a, b; bool set; };
+static FPLoop sFPLoop[WEAPONTYPE_LAST_WEAPONTYPE];
+static bool sFPLoopLoaded = false;
+
+static void
+FPLoadWeaponLoops(void)
+{
+	sFPLoopLoaded = true;
+	for (int i = 0; i < WEAPONTYPE_LAST_WEAPONTYPE; i++)
+		sFPLoop[i].set = false;
+	int fd = CFileMgr::OpenFile("fp_weapons.dat", "rb");
+	if (fd <= 0)
+		fd = CFileMgr::OpenFile("anim\\fp_weapons.dat", "rb");
+	if (fd <= 0)
+		return;
+	static const struct { const char *name; int type; } kNames[] = {
+		{ "Unarmed", WEAPONTYPE_UNARMED }, { "BaseballBat", WEAPONTYPE_BASEBALLBAT },
+		{ "Colt45", WEAPONTYPE_COLT45 }, { "Uzi", WEAPONTYPE_UZI }, { "Shotgun", WEAPONTYPE_SHOTGUN },
+		{ "Ak47", WEAPONTYPE_AK47 }, { "M16", WEAPONTYPE_M16 }, { "Flamethrower", WEAPONTYPE_FLAMETHROWER },
+		{ "Molotov", WEAPONTYPE_MOLOTOV }, { "Grenade", WEAPONTYPE_GRENADE }, { "Detonator", WEAPONTYPE_DETONATOR },
+	};
+	char line[256];
+	while (CFileMgr::ReadLine(fd, line, sizeof(line))) {
+		char name[64];
+		float a, b, c;
+		if (line[0] == '#' || sscanf(line, "%63s %f %f %f", name, &a, &b, &c) != 4)
+			continue;
+		for (auto &n : kNames)
+			if (CGeneral::faststricmp(n.name, name) == 0) {
+				// "frames" del archivo -> segundos (las animaciones de GTA van a 30 cuadros/s)
+				sFPLoop[n.type].a = a / 30.0f;
+				sFPLoop[n.type].b = b / 30.0f;
+				sFPLoop[n.type].set = true;
+			}
+	}
+	CFileMgr::CloseFile(fd);
+}
+
+static const char *
+FPWeaponSuffix(int w)
+{
+	switch (w) {
+	case WEAPONTYPE_BASEBALLBAT: return "bat";
+	case WEAPONTYPE_COLT45: return "pistol";
+	case WEAPONTYPE_UZI: return "uzi";
+	case WEAPONTYPE_SHOTGUN: return "shotgun";
+	case WEAPONTYPE_AK47: return "ak";
+	case WEAPONTYPE_M16: return "m16";
+	case WEAPONTYPE_SNIPERRIFLE: return "sniper";
+	case WEAPONTYPE_ROCKETLAUNCHER: return "rpg";
+	case WEAPONTYPE_FLAMETHROWER: return "flame";
+	case WEAPONTYPE_MOLOTOV:
+	case WEAPONTYPE_GRENADE: return "grenade";
+	default: return nil;
+	}
+}
+
+static void
+FPFreeAssoc(void)
+{
+	if (sFPAssoc) {
+		delete sFPAssoc;
+		sFPAssoc = nil;
+	}
+	sFPAssocName[0] = '\0';
+}
+
+// Normaliza los ejes de la matriz de un hueso y los escala (para ocultar o
+// restaurar la cabeza). Idempotente: nunca acumula escala.
+static void
+FPSetFrameScale(RwFrame *frame, float scale)
+{
+	RwMatrix *m = RwFrameGetMatrix(frame);
+	CVector r(m->right.x, m->right.y, m->right.z), u(m->up.x, m->up.y, m->up.z), a(m->at.x, m->at.y, m->at.z);
+	r.Normalise(); u.Normalise(); a.Normalise();
+	r *= scale; u *= scale; a *= scale;
+	m->right.x = r.x; m->right.y = r.y; m->right.z = r.z;
+	m->up.x = u.x; m->up.y = u.y; m->up.z = u.z;
+	m->at.x = a.x; m->at.y = a.y; m->at.z = a.z;
+	RwMatrixUpdate(m);
+	RwFrameUpdateObjects(frame);
+}
+
+static void
+FPDeactivate(void)
+{
+	FPFreeAssoc();
+	if (sFPHeadHidden && sFPPed && sFPPed->m_pFrames[PED_HEAD])
+		FPSetFrameScale(sFPPed->m_pFrames[PED_HEAD]->frame, 1.0f);
+	sFPHeadHidden = false;
+	for (int i = 0; i < 6; i++)
+		sFPHaveLast[i] = false;
+	gbFPArmsActive = false;
+	gbFPEyeValid = false;
+}
+
+// Rota los 3 ejes de una matriz alrededor de "axis" (unitario), regla de la
+// mano derecha (Rodrigues). La posicion no cambia: gira sobre su pivote.
+static void
+FPRotateMatrixAxes(RwMatrix *m, const CVector &axis, float angle)
+{
+	float c = Cos(angle), s = Sin(angle);
+	RwV3d *vecs[3] = { &m->right, &m->up, &m->at };
+	for (int i = 0; i < 3; i++) {
+		CVector v(vecs[i]->x, vecs[i]->y, vecs[i]->z);
+		CVector r = v * c + CrossProduct(axis, v) * s + axis * (DotProduct(axis, v) * (1.0f - c));
+		vecs[i]->x = r.x; vecs[i]->y = r.y; vecs[i]->z = r.z;
+	}
+}
+
+void
+FirstPersonArmsUpdate(CPed *ped)
+{
+	extern bool gbFirstPersonOn, gbFirstPersonBody, gbFirstPersonArms;
+	if (sFPPed && sFPPed != ped) {
+		// el ped anterior puede ya no existir: no tocar su cabeza
+		sFPHeadHidden = false;
+		FPDeactivate();
+	}
+	sFPPed = ped;
+
+	CAnimBlock *block = CAnimManager::GetAnimationBlock("fps");
+	bool want = gbFirstPersonArms && gbFirstPersonOn && gbFirstPersonBody && block &&
+		ped->m_rwObject && RwObjectGetType(ped->m_rwObject) == rpCLUMP &&
+#ifdef PED_SKIN
+		!IsClumpSkinned(ped->GetClump()) &&
+#endif
+		!ped->bInVehicle && !ped->DyingOrDead() &&
+		TheCamera.Cams[TheCamera.ActiveCam].Mode == CCam::MODE_1STPERSON_RUNABOUT;
+	if (!want) {
+		if (gbFPArmsActive || sFPAssoc || sFPHeadHidden)
+			FPDeactivate();
+		return;
+	}
+	if (!sFPLoopLoaded)
+		FPLoadWeaponLoops();
+
+	RpClump *clump = ped->GetClump();
+	CAnimBlendClumpData *clumpData = *RPANIMBLENDCLUMPDATA(clump);
+	CWeapon *weapon = ped->GetWeapon();
+	int w = weapon->m_eWeaponType;
+	const char *suffix = FPWeaponSuffix(w);
+	CPad *pad = CPad::GetPad(0);
+
+	// Que animacion corresponde ahora
+	char name[32] = "";
+	bool repeat = true, loopFire = false;
+	if (suffix) {
+		bool reloading = weapon->m_eWeaponState == WEAPONSTATE_RELOADING;
+		bool firing = !reloading && pad->GetWeapon() && !pad->ArePlayerControlsDisabled() &&
+		              (ped->m_nPedState == PED_ATTACK || weapon->m_eWeaponState == WEAPONSTATE_FIRING);
+		bool sprinting = ped->m_nMoveState == PEDMOVE_SPRINT;
+		char tmp[32];
+		if (reloading && (sprintf(tmp, "reload_%s", suffix), CAnimManager::GetAnimation(tmp, block))) {
+			strcpy(name, tmp); repeat = false;
+		} else if (firing && w == WEAPONTYPE_BASEBALLBAT) {
+			strcpy(name, "bat_hit"); repeat = true;
+		} else if (firing && (sprintf(tmp, "fire_%s", suffix), CAnimManager::GetAnimation(tmp, block))) {
+			strcpy(name, tmp); repeat = true; loopFire = true;
+		} else if (sprinting && (sprintf(tmp, "sprint_%s", suffix), CAnimManager::GetAnimation(tmp, block))) {
+			strcpy(name, tmp);
+		} else if (sprintf(tmp, "idle_%s", suffix), CAnimManager::GetAnimation(tmp, block)) {
+			strcpy(name, tmp);
+		}
+	}
+
+	if (name[0] == '\0') {
+		// Sin animacion para esta arma (p. ej. a mano limpia): brazos normales.
+		FPFreeAssoc();
+		for (int i = 0; i < 6; i++)
+			sFPHaveLast[i] = false;
+	} else if (!sFPAssoc || strcmp(name, sFPAssocName) != 0) {
+		FPFreeAssoc();
+		CAnimBlendHierarchy *hier = CAnimManager::GetAnimation(name, block);
+		CAnimManager::UncompressAnimation(hier);
+		sFPAssoc = new CAnimBlendAssociation();
+		sFPAssoc->Init(clump, hier);
+		sFPAssoc->flags = repeat ? ASSOC_REPEAT : 0;
+		sFPAssoc->Start(0.0f);
+		strncpy(sFPAssocName, name, sizeof(sFPAssocName) - 1);
+	}
+
+	float dt = CTimer::GetTimeStepInSeconds();
+	if (sFPAssoc) {
+		sFPAssoc->UpdateTime(dt, 1.0f);
+		// Disparo continuo: repetir solo el tramo A-B de fp_weapons.dat
+		if (loopFire && w < WEAPONTYPE_LAST_WEAPONTYPE && sFPLoop[w].set &&
+		    sFPLoop[w].b > sFPLoop[w].a && sFPAssoc->currentTime > sFPLoop[w].b)
+			sFPAssoc->SetCurrentTime(sFPLoop[w].a);
+
+		float k = 1.0f - Pow(2.718f, -dt / 0.06f); // transicion suave entre animaciones
+		for (int b = 0; b < 6; b++) {
+			AnimBlendFrameData *fd = RpAnimBlendClumpFindFrame(clump, kFPBones[b]);
+			if (fd == nil)
+				continue;
+			CAnimBlendNode *node = &sFPAssoc->nodes[fd - clumpData->frames];
+			if (node->sequence == nil) {
+				sFPHaveLast[b] = false;
+				continue;
+			}
+			CVector t;
+			CQuaternion q;
+			node->Update(t, q, 1.0f);
+			q.Normalise();
+			if (sFPHaveLast[b]) {
+				CQuaternion &l = sFPLast[b];
+				if (l.x*q.x + l.y*q.y + l.z*q.z + l.w*q.w < 0.0f)
+					q = -q;
+				q = CQuaternion(l.x + (q.x - l.x)*k, l.y + (q.y - l.y)*k, l.z + (q.z - l.z)*k, l.w + (q.w - l.w)*k);
+				q.Normalise();
+			}
+			sFPLast[b] = q;
+			sFPHaveLast[b] = true;
+
+			RwMatrix *m = RwFrameGetMatrix(fd->frame);
+			RwV3d pos = m->pos;
+			RwMatrixSetIdentity(m);
+			q.Get(m);
+			m->pos = pos;
+			RwMatrixUpdate(m);
+			RwFrameUpdateObjects(fd->frame);
+		}
+
+		// Los brazos siguen la inclinacion vertical de la camara (giro sobre el
+		// hombro, alrededor del eje "derecha" del personaje).
+		extern float gfFirstPersonArmPitch;
+		float pitch = TheCamera.m_AlphaForPlayerAnim1rstPerson * gfFirstPersonArmPitch;
+		CVector rightW = ped->GetRight();
+		for (int b = 0; b < 6; b += 3) {
+			AnimBlendFrameData *fd = RpAnimBlendClumpFindFrame(clump, kFPBones[b]);
+			if (fd == nil || !sFPHaveLast[b])
+				continue;
+			RwFrame *parent = RwFrameGetParent(fd->frame);
+			if (parent == nil)
+				continue;
+			RwMatrix *P = RwFrameGetLTM(parent);
+			CVector axis(DotProduct(rightW, CVector(P->right.x, P->right.y, P->right.z)),
+			             DotProduct(rightW, CVector(P->up.x, P->up.y, P->up.z)),
+			             DotProduct(rightW, CVector(P->at.x, P->at.y, P->at.z)));
+			if (axis.MagnitudeSqr() < 0.0001f)
+				continue;
+			axis.Normalise();
+			RwMatrix *m = RwFrameGetMatrix(fd->frame);
+			FPRotateMatrixAxes(m, axis, pitch);
+			RwMatrixUpdate(m);
+			RwFrameUpdateObjects(fd->frame);
+		}
+	}
+
+	// Ojos (antes de ocultar la cabeza) y cabeza oculta
+	if (ped->m_pFrames[PED_HEAD]) {
+		RwFrame *head = ped->m_pFrames[PED_HEAD]->frame;
+		if (sFPHeadHidden)
+			FPSetFrameScale(head, 1.0f); // medir con la escala real
+		CVector eye(0.06f, 0.05f, 0.0f);
+		ped->TransformToNode(eye, PED_HEAD);
+		gvFPEyeLocal = Multiply3x3(eye - ped->GetPosition(), ped->GetMatrix());
+		gbFPEyeValid = true;
+		FPSetFrameScale(head, 0.02f);
+		sFPHeadHidden = true;
+	}
+	gbFPArmsActive = true;
+}
+#endif

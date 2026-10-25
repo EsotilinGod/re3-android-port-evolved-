@@ -57,8 +57,8 @@ enum Config {
 	NUMAUDIOSCRIPTOBJECTS = 256,
 	NUMCUTSCENEOBJECTS = 50,
 
-	NUMANIMBLOCKS = 2,
-	NUMANIMATIONS = 250,
+	NUMANIMBLOCKS = 3,	// +1: anim/fps.ifp (brazos en primera persona, opcional)
+	NUMANIMATIONS = 300,
 
 	NUMTEMPOBJECTS = 30,
 
