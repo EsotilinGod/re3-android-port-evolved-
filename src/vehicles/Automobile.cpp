@@ -1027,11 +1027,17 @@ CAutomobile::ProcessControl(void)
 				m_aWheelSpeed[0] = Max(m_aWheelSpeed[0]-0.0005f, 0.0f);
 		}else if((GetModelIndex() == MI_DODO || CVehicle::bAllDodosCheat) &&
 		         m_vecMoveSpeed.Magnitude() > 0.0f && CTimer::GetTimeStep() > 0.0f){
+			// [Vehicles] DodoFlight: el Dodo usa el modelo de vuelo de avion de
+			// verdad (el del hidroavion de Vice City, que re3 ya trae para el
+			// truco ALT_DODO) en vez del original de alas recortadas.
+			extern bool gbDodoFlight;
 #ifdef ALT_DODO_CHEAT
-			if (bAltDodoCheat)
+			if (bAltDodoCheat || gbDodoFlight && GetModelIndex() == MI_DODO)
+#else
+			if (gbDodoFlight && GetModelIndex() == MI_DODO)
+#endif
 				FlyingControl(FLIGHT_MODEL_SEAPLANE);
 			else
-#endif
 				FlyingControl(FLIGHT_MODEL_DODO);
 		}else if(GetModelIndex() == MI_MIAMI_RCBARON){
 			FlyingControl(FLIGHT_MODEL_RCPLANE);

@@ -364,8 +364,12 @@ CVehicle::FlyingControl(eFlightModel flightModel)
 		if (GRAVITY * CTimer::GetTimeStep() * m_fMass < fLiftImpulse) {
 			if (flightModel == FLIGHT_MODEL_RCPLANE && GetPosition().z > 50.0f)
 				fLiftImpulse = CTimer::GetTimeStep() * 0.9f*GRAVITY * m_fMass;
-			else if (flightModel == FLIGHT_MODEL_SEAPLANE && GetPosition().z > 80.0f)
-				fLiftImpulse = CTimer::GetTimeStep() * 0.9f*GRAVITY * m_fMass;
+			else if (flightModel == FLIGHT_MODEL_SEAPLANE) {
+				// [Vehicles] DodoCeiling: altura maxima de vuelo (original 80 m).
+				extern float gfDodoCeiling;
+				if (GetPosition().z > (GetModelIndex() == MI_DODO ? gfDodoCeiling : 80.0f))
+					fLiftImpulse = CTimer::GetTimeStep() * 0.9f*GRAVITY * m_fMass;
+			}
 		}
 		ApplyMoveForce(fLiftImpulse * GetUp());
 

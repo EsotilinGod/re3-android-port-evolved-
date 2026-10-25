@@ -546,6 +546,11 @@ bool gbFirstPersonBody = true;
 bool gbManualReload = true;
 char gsReloadKey[8] = "R";
 
+// [Vehicles] DodoFlight: 1 = el Dodo vuela como un avion de verdad.
+// DodoCeiling: altura maxima en metros.
+bool gbDodoFlight = true;
+float gfDodoCeiling = 200.0f;
+
 bool LoadINISettings()
 {
 	if (!GetIniFile().read(cfg))
@@ -671,6 +676,8 @@ bool LoadINISettings()
 	ReadIniIfExists("Camera", "FirstPersonBody", &gbFirstPersonBody);
 	ReadIniIfExists("Weapons", "ManualReload", &gbManualReload);
 	ReadIniIfExists("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
+	ReadIniIfExists("Vehicles", "DodoFlight", &gbDodoFlight);
+	ReadIniIfExists("Vehicles", "DodoCeiling", &gfDodoCeiling);
 
 	return true;
 }
@@ -780,6 +787,8 @@ void SaveINISettings()
 	StoreIni("Camera", "FirstPersonBody", (uint8)gbFirstPersonBody);
 	StoreIni("Weapons", "ManualReload", (uint8)gbManualReload);
 	StoreIni("Weapons", "ReloadKey", gsReloadKey, sizeof(gsReloadKey));
+	StoreIni("Vehicles", "DodoFlight", (uint8)gbDodoFlight);
+	StoreIni("Vehicles", "DodoCeiling", gfDodoCeiling);
 
 	GetIniFile().write(cfg);
 }
