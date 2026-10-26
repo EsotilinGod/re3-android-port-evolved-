@@ -360,6 +360,16 @@ RwStream *RwStreamOpen(RwStreamType type, RwStreamAccessType accessType, const v
 		StreamFile fakefile;
 		file = rwNewT(StreamFile, 1, 0);
 		memcpy(file, &fakefile, sizeof(StreamFile));
+#if defined ANDROID
+		{
+			// carpeta mods/ estilo ModLoader (ver ModLoader.cpp): texturas
+			// sueltas como generic.txd, particle.txd, splash*.txd, fonts...
+			extern const char *ModLoaderRedirect(const char *path, const char *mode);
+			const char *modPath = ModLoaderRedirect((const char*)pData, mode);
+			if (modPath && file->open((char*)modPath, mode))
+				return file;
+		}
+#endif
 #ifndef _WIN32
 		char *r = casepath((char*)pData);
 		if (r) {

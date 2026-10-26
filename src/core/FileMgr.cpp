@@ -233,6 +233,18 @@ found:
 	*p++ = 'b';
 	*p = '\0';
 	
+#if defined ANDROID
+	{
+		// carpeta mods/ estilo ModLoader (ver ModLoader.cpp)
+		extern const char *ModLoaderRedirect(const char *path, const char *mode);
+		const char *modPath = ModLoaderRedirect(filename, realmode);
+		if(modPath){
+			myfiles[fd].file = fopen(modPath, realmode);
+			if(myfiles[fd].file)
+				return fd;
+		}
+	}
+#endif
 	myfiles[fd].file = fcaseopen(filename, realmode);
 	if(myfiles[fd].file == nil)
 		return 0;

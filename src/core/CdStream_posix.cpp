@@ -300,15 +300,37 @@ CdStreamRead(int32 channel, void *buffer, uint32 offset, uint32 size)
 
 	lastPosnRead = size + offset;
 
+#if defined ANDROID
+	// Archivos sueltos de la carpeta mods/ (ModLoader.cpp): "imagen" 0x7F,
+	// archivo = bits altos del sector, sector dentro del archivo = 13 bits bajos.
+	uint32 sectorOffset = _GET_OFFSET(offset);
+	int32 hImage;
+	if ( _GET_INDEX(offset) == 0x7F ) {
+		extern int ModLoaderGetFd(uint32 fileIndex);
+		int fd = ModLoaderGetFd(sectorOffset >> 13);
+		if ( fd < 0 )
+			return STREAM_NONE;
+		hImage = fd + 1;
+		sectorOffset &= 0x1FFF;
+	} else {
+		ASSERT( _GET_INDEX(offset) < MAX_CDIMAGES );
+		hImage = gImgFiles[_GET_INDEX(offset)];
+	}
+#else
 	ASSERT( _GET_INDEX(offset) < MAX_CDIMAGES );
 	int32 hImage = gImgFiles[_GET_INDEX(offset)];
+#endif
 	ASSERT( hImage > 0 );
 
 	CdReadInfo *pChannel = &gpReadInfo[channel];
 	ASSERT( pChannel != nil );
 
 	if ( pChannel->nSectorsToRead != 0 || pChannel->bReading ) {
+		#if defined ANDROID
+		if (pChannel->hFile == hImage - 1 && pChannel->nSectorOffset == sectorOffset && pChannel->nSectorsToRead >= size)
+#else
 		if (pChannel->hFile == hImage - 1 && pChannel->nSectorOffset == _GET_OFFSET(offset) && pChannel->nSectorsToRead >= size)
+#endif
 			return STREAM_SUCCESS;
 #ifdef FLUSHABLE_STREAMING
 		flushStream[channel] = 1;
@@ -320,7 +342,11 @@ CdStreamRead(int32 channel, void *buffer, uint32 offset, uint32 size)
 
 	pChannel->hFile = hImage - 1;
 	pChannel->nStatus = STREAM_NONE;
+#if defined ANDROID
+	pChannel->nSectorOffset = sectorOffset;
+#else
 	pChannel->nSectorOffset = _GET_OFFSET(offset);
+#endif
 	pChannel->nSectorsToRead = size;
 	pChannel->pBuffer = buffer;
 	pChannel->bLocked = 0;

@@ -199,6 +199,13 @@ CStreaming::Init2(void)
 	ms_currentPedLoading = 8;	// unused, whatever it is
 
 	LoadCdDirectory();
+#if defined ANDROID
+	{
+		// carpeta mods/ estilo ModLoader (ver ModLoader.cpp)
+		extern void ModLoaderApplyStreaming(int32 &streamingBufferSize);
+		ModLoaderApplyStreaming(ms_streamingBufferSize);
+	}
+#endif
 
 	// allocate streaming buffers
 	if(ms_streamingBufferSize & 1) ms_streamingBufferSize++;
