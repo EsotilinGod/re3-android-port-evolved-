@@ -96,6 +96,8 @@ public class GameActivity extends SDLActivity {
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
 
+        requestHighRefreshRate(gameDir);
+
         // libre3.so is already loaded at this point (loadLibraries(), called
         // from within super.onCreate(), just did it), so TouchControlsView's
         // native methods resolve fine without a separate System.loadLibrary.
@@ -115,6 +117,55 @@ public class GameActivity extends SDLActivity {
         // coincidir EXACTO: Android es case-sensitive y System.loadLibrary con el
         // case equivocado falla silenciosamente sin cargar nada.
         return new String[]{"SDL2", "openal", "mpg123", "re3"};
+    }
+
+    /**
+     * Android deja a las apps a 60 Hz aunque la pantalla soporte 90/120 Hz,
+     * salvo que la app lo pida. Si en re3.ini [Display] FPSLimit es mayor a 60,
+     * se pide el modo de pantalla con la frecuencia mas cercana (por arriba) a
+     * ese limite, con la misma resolucion; asi el vsync puede ir a 90/120.
+     */
+    private void requestHighRefreshRate(File gameDir) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        int fpsLimit = 60;
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(new File(gameDir, "re3.ini")))) {
+            String line;
+            boolean inDisplay = false;
+            while ((line = r.readLine()) != null) {
+                line = line.trim();
+                if (line.startsWith("[")) { inDisplay = line.equalsIgnoreCase("[Display]"); continue; }
+                if (inDisplay && line.toLowerCase().startsWith("fpslimit")) {
+                    int eq = line.indexOf('=');
+                    if (eq > 0) fpsLimit = (int) Float.parseFloat(line.substring(eq + 1).trim());
+                }
+            }
+        } catch (Exception e) {
+            // sin re3.ini todavia (primer arranque): queda en 60
+        }
+        if (fpsLimit <= 60) return;
+        try {
+            android.view.Display display = getWindowManager().getDefaultDisplay();
+            android.view.Display.Mode current = display.getMode();
+            android.view.Display.Mode best = null;
+            for (android.view.Display.Mode m : display.getSupportedModes()) {
+                if (m.getPhysicalWidth() != current.getPhysicalWidth() || m.getPhysicalHeight() != current.getPhysicalHeight())
+                    continue;
+                float hz = m.getRefreshRate();
+                if (best == null) { best = m; continue; }
+                float bestHz = best.getRefreshRate();
+                boolean hzOk = hz >= fpsLimit - 1, bestOk = bestHz >= fpsLimit - 1;
+                // preferir el menor que alcance el limite; si ninguno alcanza, el mayor
+                if ((hzOk && (!bestOk || hz < bestHz)) || (!hzOk && !bestOk && hz > bestHz))
+                    best = m;
+            }
+            if (best != null && best.getModeId() != current.getModeId()) {
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                lp.preferredDisplayModeId = best.getModeId();
+                getWindow().setAttributes(lp);
+            }
+        } catch (Exception e) {
+            // no critico
+        }
     }
 
     /** Called via JNI from CJavaWrapper::ExitGame() (skel/android/JavaWrapper.cpp). */
