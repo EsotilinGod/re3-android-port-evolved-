@@ -755,8 +755,9 @@ LoadingScreen(const char *str1, const char *str2, const char *splashscreen)
 	// como mucho cada 100 ms para no hacer mas lenta la carga.
 	if (str1 && str2) {
 		static double lastDraw = -1000.0;
-		extern double psTimer(void);
-		double now = psTimer();
+		struct timespec ts;
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+		double now = ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
 		if (splashscreen)
 			LoadSplash(splashscreen);
 		if (now - lastDraw < 100.0)
