@@ -322,9 +322,14 @@ enum Config {
 #define PS2_ALPHA_TEST		// emulate ps2 alpha test 
 #define IMPROVED_VIDEOMODE	// save and load videomode parameters instead of a magic number
 #define DISABLE_LOADING_SCREEN // disable the loading screen which vastly improves the loading time
-#ifdef DISABLE_LOADING_SCREEN
+#if defined(DISABLE_LOADING_SCREEN) && !defined(ANDROID)
 // enable the PC splash
 #undef RANDOMSPLASH
+#endif
+#ifdef ANDROID
+// Android: pantallas de carga con las ilustraciones al azar, como en PS2
+// (las imagenes ahora viven fuera del streaming, ver LoadSplash()).
+#define RANDOMSPLASH
 #endif
 #define DISABLE_VSYNC_ON_TEXTURE_CONVERSION // make texture conversion work faster by disabling vsync
 #define ANISOTROPIC_FILTERING	// set all textures to max anisotropic filtering

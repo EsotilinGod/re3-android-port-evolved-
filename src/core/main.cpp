@@ -342,7 +342,8 @@ DoFade(void)
 		}
 		CSprite2d::DrawRect(rect, fadeColor);
 
-#if !defined ANDROID
+#if 1 // Android incluido: LoadSplash() ya no comparte un slot TXD con el streaming
+		// (Comentario original del port:)
 		// This is the fourth call site found drawing the shared LoadSplash()
 		// sprite well after it was first set (see the long comment inside
 		// LoadSplash() itself) -- each one crashed the same way once enough
@@ -744,9 +745,24 @@ LoadingScreen(const char *str1, const char *str2, const char *splashscreen)
 {
 	CSprite2d *splash;
 
-#ifdef DISABLE_LOADING_SCREEN
+#if defined(DISABLE_LOADING_SCREEN) && !defined(ANDROID)
 	if (str1 && str2)
 		return;
+#endif
+#if defined ANDROID
+	// Se muestran las pantallas de carga (ilustracion) al iniciar partida,
+	// pero el juego llama a esta funcion por cada archivo que carga: se redibuja
+	// como mucho cada 100 ms para no hacer mas lenta la carga.
+	if (str1 && str2) {
+		static double lastDraw = -1000.0;
+		extern double psTimer(void);
+		double now = psTimer();
+		if (splashscreen)
+			LoadSplash(splashscreen);
+		if (now - lastDraw < 100.0)
+			return;
+		lastDraw = now;
+	}
 #endif
 
 #ifndef RANDOMSPLASH
