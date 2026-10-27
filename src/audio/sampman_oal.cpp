@@ -887,6 +887,36 @@ cSampleManager::Initialise(void)
 		debug("Loadind audio cache (If game crashes around here, then your cache is corrupted, remove audio/sound.cache)\n");
 		fread(nStreamLength, sizeof(uint32), TOTAL_STREAMED_SOUNDS, cacheFile);
 		fclose(cacheFile);
+#if defined ANDROID
+		// El cache guarda la duracion de cada pista la primera vez que se abre
+		// el juego. Si en ese momento faltaba la radio (o estaba en otro
+		// formato), quedaba guardada con duracion 0 para siempre y esas
+		// emisoras nunca sonaban aunque despues se agregaran los archivos.
+		// Se reintentan las pistas en 0 y se actualiza el cache.
+		bool cacheChanged = false;
+		for ( int32 i = 0; i < TOTAL_STREAMED_SOUNDS; i++ )
+		{
+			if ( nStreamLength[i] != 0 || !aStream[0] )
+				continue;
+			if (
+#ifdef PS2_AUDIO_PATHS
+				aStream[0]->Open(PS2StreamedNameTable[i], IsThisTrackAt16KHz(i) ? 16000 : 32000) ||
+#endif
+				aStream[0]->Open(StreamedNameTable[i], IsThisTrackAt16KHz(i) ? 16000 : 32000))
+			{
+				nStreamLength[i] = aStream[0]->GetLengthMS();
+				aStream[0]->Close();
+				cacheChanged = nStreamLength[i] != 0 || cacheChanged;
+			}
+		}
+		if ( cacheChanged ) {
+			FILE *outCache = fcaseopen("audio\\sound.cache", "wb");
+			if ( outCache ) {
+				fwrite(nStreamLength, sizeof(uint32), TOTAL_STREAMED_SOUNDS, outCache);
+				fclose(outCache);
+			}
+		}
+#endif
 	} else
 	{
 		debug("Cannot load audio cache\n");

@@ -1187,6 +1187,36 @@ bool CStream::Open(const char* filename, uint32 overrideSampleRate)
 // Be case-insensitive on linux (from https://github.com/OneSadCookie/fcaseopen/)
 #if !defined(_WIN32)
 	char *real = casepath(filename);
+#if defined ANDROID
+	// Radio y dialogos:
+	//  1) un archivo con el mismo nombre en la carpeta mods/ tiene prioridad;
+	//  2) si falta el .WAV original pero existe el mismo nombre en .MP3 (muchas
+	//     copias del juego traen la radio en mp3), se usa ese.
+	{
+		extern const char *ModLoaderRedirect(const char *path, const char *mode);
+		const char *modPath = ModLoaderRedirect(filename, "rb");
+		if (!modPath) {
+			size_t len = strlen(filename);
+			if (len > 4 && !strcasecmp(filename + len - 4, ".wav")) {
+				char alt[256];
+				strncpy(alt, filename, sizeof(alt) - 1);
+				alt[sizeof(alt) - 1] = '\0';
+				strcpy(alt + len - 4, ".mp3");
+				modPath = ModLoaderRedirect(alt, "rb");
+				if (!modPath && !real) {
+					char *realMp3 = casepath(alt);
+					if (realMp3) {
+						real = realMp3;
+					}
+				}
+			}
+		}
+		if (modPath) {
+			if (real) free(real);
+			real = strdup(modPath);
+		}
+	}
+#endif
 	if (real) {
 		strcpy(m_aFilename, real);
 		free(real);
